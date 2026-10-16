@@ -35,14 +35,7 @@ func (d *concurrentTools) handle(ctx context.Context, frame object) error {
 	if kind != 1 && kind != 2 {
 		return nil
 	}
-	sandbox := textValue(frame["sandbox_id"])
-	if sandbox == "" {
-		sandbox = textValue(frame["sandBoxID"])
-	}
-	if sandbox == "" {
-		sandbox = textValue(frame["instance_id"])
-	}
-	if sandbox != d.sandbox {
+	if frameSandbox(frame) != d.sandbox {
 		return nil
 	}
 	key := "tool_call"

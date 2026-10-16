@@ -164,6 +164,43 @@ func (c *Client) connectorList(ctx context.Context) ([]any, error) {
 	return nil, errors.New("connector pagination exceeded limit")
 }
 
+// connectorEnableWait bounds how long a new connector may take to be listed
+// as enabled; the listing can lag create_personal by a moment. Each check has
+// its own deadline so that one stalled listing request cannot use up the wait.
+var connectorEnableWait, connectorCheckTimeout = 30 * time.Second, 5 * time.Second
+
+func (c *Client) awaitConnectorEnabled(ctx context.Context, id string) error {
+	wait, cancel := context.WithTimeout(ctx, connectorEnableWait)
+	defer cancel()
+	state, checks := "", 0
+	for wait.Err() == nil {
+		check, stop := context.WithTimeout(wait, connectorCheckTimeout)
+		rows, err := c.connectorList(check)
+		stop()
+		checks++
+		state = "not listed"
+		if err != nil {
+			state = "listing failed: " + err.Error()
+		}
+		for _, row := range rows {
+			if textValue(field(row, "connector_id")) == id {
+				if field(row, "enabled") == true || number(field(row, "enabled")) == 1 {
+					return nil
+				}
+				state = "listed as disabled"
+			}
+		}
+		select {
+		case <-wait.Done():
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return fmt.Errorf("temporary connector is not enabled (%s; %d checks in %v)", state, checks, connectorEnableWait)
+}
+
 func connectorIDs(items []any) []string {
 	ids := []string{}
 	for _, x := range items {
@@ -317,20 +354,23 @@ func applyProbeWorkspace(workspace string, req object) (object, bool) {
 	return response, true
 }
 
+// frameSandbox names the sandbox a native tool frame is addressed to.
+func frameSandbox(frame object) string {
+	for _, key := range []string{"sandbox_id", "sandBoxID", "instance_id"} {
+		if sandbox := textValue(frame[key]); sandbox != "" {
+			return sandbox
+		}
+	}
+	return ""
+}
+
 func (p *toolProbe) handle(ctx context.Context, frame object) error {
 	kind := number(frame["event_type"])
 	p.events[fmt.Sprint(kind)]++
 	if kind != 1 && kind != 2 {
 		return nil
 	}
-	sandbox := textValue(frame["sandbox_id"])
-	if sandbox == "" {
-		sandbox = textValue(frame["sandBoxID"])
-	}
-	if sandbox == "" {
-		sandbox = textValue(frame["instance_id"])
-	}
-	if sandbox != p.sandbox {
+	if frameSandbox(frame) != p.sandbox {
 		p.ignored++
 		return nil
 	}
@@ -502,18 +542,8 @@ func (c *Client) probeTools(ctx context.Context, model Model, private, public st
 	if createErr != nil {
 		return createErr
 	}
-	rows, err := c.connectorList(ctx)
-	if err != nil {
+	if err = c.awaitConnectorEnabled(ctx, connector); err != nil {
 		return err
-	}
-	enabled := false
-	for _, row := range rows {
-		if textValue(field(row, "connector_id")) == connector {
-			enabled = field(row, "enabled") == true || number(field(row, "enabled")) == 1
-		}
-	}
-	if !enabled {
-		return errors.New("created connector is not enabled")
 	}
 	evidence["connector_registered"] = true
 	workspace := filepath.Join(private, "tool-workspace-"+runToken)

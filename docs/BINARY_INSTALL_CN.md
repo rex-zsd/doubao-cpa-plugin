@@ -1,5 +1,7 @@
 # 二进制安装包使用
 
+本文只适用于 v0.1.0 安装包。它自带固定版本的修补宿主，模型名还是旧的 `doubao-work-pro` 这一类。官方 CPA v8 请按 [README_CN.md](../README_CN.md) 的“安装到 CPA v8”安装当前版本（0.3.7），模型名为 `doubao-2.1-pro` 这类 slug。
+
 当前为实验版 v0.1.0，只验收 Linux amd64、单账号。二进制在 Debian 12 / glibc 2.36 上构建，要求 glibc 2.34 或更新。其他环境请从源码构建。扫码登录需要安装 `qrencode`，安装脚本需要 Python 3。
 
 ## 从 GitHub Release 安装

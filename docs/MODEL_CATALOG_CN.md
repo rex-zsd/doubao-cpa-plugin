@@ -1,26 +1,26 @@
 # 模型数量与名称
 
-模型数量没有固定为 8。插件在首次打开服务时读取当前账号的豆包模型清单，仅注册可用且支持 Work 模式的项，再为豆包 Pro 增加 `doubao-work-pro` 便捷别名。同一个底层模型可以有两个 API ID，所以 API ID 数量不等于底层模型数量。
+模型数量不固定。插件在首次打开服务时读取当前账号的 Work 模型清单，只注册可用且支持 Work 模式的项，每项一个 API ID。
 
-本轮用现有授权账号和已交付的宿主/插件重新查询，豆包返回 9 个 Work 选项：8 个具体模型和“自动”。原生 CPA `/v1/models` 实际返回 10 个 ID，包括上述 9 项和 Pro 别名。没有提交模型生成请求。
+## 名称规则
 
-## 当前账号的名称对应
+API ID 由 Work 显示名转换而来：去掉“豆包”，转小写，字母、数字和点以外的字符换成 `-`，再加上 `doubao-` 前缀。“自动”对应 `doubao-auto`。两个显示名转换后相同时，后注册的一个追加上游模型 key。
 
-| Work 显示名 | 插件 API ID |
+| Work 显示名 | API ID |
 |---|---|
-| GPT-6.1 Sol | `doubao-work-5262373378` |
-| GPT-6 Astra | `doubao-work-1964544258` |
-| GPT-5.6 Sol | `doubao-work-2123520258` |
-| Gemini 3.7 Flash | `doubao-work-1946880770` |
-| Orange 5.5 | `doubao-work-5255447810` |
-| 豆包 2.1 Turbo | `doubao-work-4` |
-| 豆包 2.1 Pro | `doubao-work-5`，另有 `doubao-work-pro` |
-| 豆包 2.1 Lite | `doubao-work-seed-lite-7b` |
-| 自动 | `doubao-work-9` |
+| 自动 | `doubao-auto` |
+| 豆包 2.1 Pro | `doubao-2.1-pro` |
+| 豆包 2.1 Turbo | `doubao-2.1-turbo` |
+| 豆包 2.1 Lite | `doubao-2.1-lite` |
+| GPT-6.1 Sol | `doubao-gpt-6.1-sol` |
+| GPT-6 Astra | `doubao-gpt-6-astra` |
+| GPT-5.6 Sol | `doubao-gpt-5.6-sol` |
+| Gemini 3.7 Flash | `doubao-gemini-3.7-flash` |
+| Orange 5.5 | `doubao-orange-5.5` |
 
-以上是当前授权账号在 2026-10-15 的真实清单，可能随账号权限和上游配置改变，不能作为所有账号的固定映射。“自动”也不代表一个指定的底层模型。
+这是测试账号 2026-10-16 的清单，会随账号权限和上游配置变化，以 `/v1/models` 为准。“自动”不代表某个固定的底层模型。
 
-插件目前用 `doubao-work-` 加上游模型 key 作为 API ID，并另外提供显示名；固定 CPA 的 OpenAI `/v1/models` handler 只保留标准字段，丢弃显示名，因此仅查看该接口或客户端下拉框时，GPT 可能显示为数字 ID。上述 GPT-6.1 ID 证明该选项已注册到 API；本轮没有额外验证它的真实生成。
+0.3 之前的 API ID 是 `doubao-work-` 加上游模型 key（例如 `doubao-work-5262373378`），另有 `doubao-work-pro` 别名。这些名称已不再注册，用它们请求会返回 `model_not_found`，请改用上表的名称。
 
 ## 数量与页面不一致时
 

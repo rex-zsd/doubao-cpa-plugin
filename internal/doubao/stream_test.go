@@ -1,7 +1,9 @@
 package doubao
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -39,7 +41,7 @@ func TestStreamingPublishesBeforeCompletionAndReplaysExactly(t *testing.T) {
 	finished := make(chan error, 1)
 	var output strings.Builder
 	go func() {
-		finished <- (&Response{x}).Stream(context.Background(), func(data []byte) error {
+		finished <- (&Response{x: x}).Stream(context.Background(), func(data []byte) error {
 			output.Write(data)
 			if strings.Contains(string(data), `"content":"Hello"`) {
 				select {
@@ -67,7 +69,7 @@ func TestStreamingPublishesBeforeCompletionAndReplaysExactly(t *testing.T) {
 		t.Fatal("bad incremental stream", output.String())
 	}
 	var replay strings.Builder
-	if err := (&Response{x}).Stream(context.Background(), func(data []byte) error { replay.Write(data); return nil }); err != nil {
+	if err := (&Response{x: x}).Stream(context.Background(), func(data []byte) error { replay.Write(data); return nil }); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Count(replay.String(), `"content":"Hello"`) != 1 || !strings.Contains(replay.String(), `"content":" world"`) {
@@ -78,5 +80,30 @@ func TestStreamingPublishesBeforeCompletionAndReplaysExactly(t *testing.T) {
 	y.resolve(apiMessage{Role: "assistant", Content: "revised answer"}, "stop", nil)
 	if y.err == nil || y.err.Code != "visible_text_changed" {
 		t.Fatal("revised upstream output silently accepted")
+	}
+}
+
+func TestStreamReturnsFailureAndHonorsIncludeUsage(t *testing.T) {
+	x := newExchange("TestModel")
+	x.resolve(apiMessage{}, "", promptTooLong("word"))
+	if err := (&Response{x: x}).Stream(context.Background(), func([]byte) error { return nil }); err != x.err {
+		t.Fatal("stream hid the upstream failure", err)
+	}
+	y := newExchange("TestModel")
+	y.resolve(apiMessage{Role: "assistant", Content: "hi"}, "stop", nil)
+	for _, usage := range []bool{false, true} {
+		var frames []object
+		err := (&Response{x: y, usage: usage}).Stream(context.Background(), func(data []byte) error {
+			var frame object
+			if json.Unmarshal(bytes.TrimPrefix(bytes.TrimSpace(data), []byte("data: ")), &frame) == nil {
+				frames = append(frames, frame)
+			}
+			return nil
+		})
+		last := frames[len(frames)-1]
+		finish := field(array(frames[len(frames)-2]["choices"])[0], "finish_reason")
+		if err != nil || last["usage"] == nil || usage != (len(array(last["choices"])) == 0) || usage && (finish != "stop" || frames[len(frames)-2]["usage"] != nil) {
+			t.Fatal("usage chunk does not follow stream_options.include_usage", usage, frames)
+		}
 	}
 }

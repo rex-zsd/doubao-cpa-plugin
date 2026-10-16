@@ -107,12 +107,14 @@ func TestRecoveryResumesPendingBatchOnceAndCachesTerminalReplay(t *testing.T) {
 	var uploads, generations atomic.Int32
 	c.http.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
 		status := object{"code": 0}
+		header := http.Header{}
 		var body io.ReadCloser
 		switch r.URL.Path {
 		case "/chat/completion":
 			generations.Add(1)
 			return nil, context.Canceled
 		case "/alice/office/tool_local/chunk_stream":
+			header.Set("Content-Type", "text/event-stream")
 			body = io.NopCloser(io.MultiReader(strings.NewReader("data: "+jsonText(frame)+"\n\n"), untilCancelled{r.Context()}))
 		case "/alice/office/tool_local/upload_tool_call_result":
 			uploads.Add(1)
@@ -131,7 +133,7 @@ func TestRecoveryResumesPendingBatchOnceAndCachesTerminalReplay(t *testing.T) {
 		if body == nil {
 			body = io.NopCloser(strings.NewReader(jsonText(status)))
 		}
-		return &http.Response{StatusCode: 200, Header: http.Header{}, Body: body, Request: r}, nil
+		return &http.Response{StatusCode: 200, Header: header, Body: body, Request: r}, nil
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

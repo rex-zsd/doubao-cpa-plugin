@@ -9,17 +9,32 @@ const batchToolName = "client_tools_batch"
 
 func parallelRequested(req apiRequest) bool { return req.Parallel != nil && *req.Parallel }
 
+// The batch schema holds every function, and Work leaves a task hanging when
+// one connector tool's schema is too large: batches of about 54,000 and 60,000
+// characters worked, one of 60,000 and two near 100,000 hung for six minutes
+// (measured 2026-10-16). A larger catalog is offered one function at a time.
+const batchSchemaLimit = 48000
+
+// batchMode reports whether the turn offers client_tools_batch instead of the
+// functions themselves: the caller asked for parallel calls and they fit.
+func batchMode(req apiRequest) bool {
+	return parallelRequested(req) && utf16Len(batchSchema(req.Tools)) <= batchSchemaLimit
+}
+
 // This explicitly models batching. It does not fabricate parallel native calls:
 // one real native connector event contains several model-selected client calls.
 func batchCatalog(tools []apiTool) []any {
+	return []any{object{"name": batchToolName, "description": "Execute 1 to 8 independent client functions in parallel. Include every independent lookup in ONE calls array. Wait for their real results. Submit dependent calls in a later batch. Results identify each input by zero-based index and function name.", "inputSchema": batchSchema(tools)}}
+}
+
+func batchSchema(tools []apiTool) string {
 	variants := []any{}
 	for _, tool := range tools {
-		variants = append(variants, object{"type": "object", "description": tool.Function.Description, "properties": object{
+		variants = append(variants, object{"type": "object", "description": connectorDescription(tool), "properties": object{
 			"name": object{"type": "string", "enum": []string{tool.Function.Name}}, "arguments": tool.Function.Parameters,
 		}, "required": []string{"name", "arguments"}, "additionalProperties": false})
 	}
-	schema := object{"type": "object", "properties": object{"calls": object{"type": "array", "minItems": 1, "maxItems": 8, "items": object{"oneOf": variants}}}, "required": []string{"calls"}, "additionalProperties": false}
-	return []any{object{"name": batchToolName, "description": "Execute 1 to 8 independent client functions in parallel. Include every independent lookup in ONE calls array. Wait for their real results. Submit dependent calls in a later batch. Results identify each input by zero-based index and function name.", "inputSchema": jsonText(schema)}}
+	return jsonText(object{"type": "object", "properties": object{"calls": object{"type": "array", "minItems": 1, "maxItems": 8, "items": object{"oneOf": variants}}}, "required": []string{"calls"}, "additionalProperties": false})
 }
 
 func (g *gateway) forwardClientBatch(ctx context.Context, t *gatewayTurn, native, args object, req apiRequest) (object, error) {
@@ -81,59 +96,4 @@ func (g *gateway) forwardClientBatch(ctx context.Context, t *gatewayTurn, native
 		return nil, ctx.Err()
 	}
 	return g.toolReply(ctx, t, native, value, true)
-}
-
-// The first implementation accepts a complete result batch atomically, in any
-// order. It never uploads a partial batch or starts another native generation.
-// Caller holds g.mu, matching the existing scalar continuation path.
-func (g *gateway) submitBatchLocked(req apiRequest, p *clientToolPending) (*apiExchange, *apiError) {
-	n := len(p.expected)
-	if len(req.Messages) < n || !apiMessagesEqual(req.Messages[:n], p.expected) {
-		return nil, apiFail(409, "tool_history_mismatch", "Batch continuation requires the exact assistant message and prior history")
-	}
-	if len(req.Messages) != n+len(p.batchCalls) {
-		return nil, apiFail(400, "incomplete_tool_batch", "Supply one tool result for every call in this batch in one request")
-	}
-	wanted, values := map[string]bool{}, map[string]string{}
-	for _, call := range p.batchCalls {
-		wanted[call.ID] = true
-	}
-	for _, message := range req.Messages[n:] {
-		_, duplicate := values[message.ToolCallID]
-		if message.Role != "tool" || !wanted[message.ToolCallID] || duplicate {
-			return nil, apiFail(409, "invalid_tool_batch", "Batch contains unknown, duplicate or non-tool results")
-		}
-		values[message.ToolCallID] = apiResultText(message.Content)
-	}
-	rows := []any{}
-	for i, call := range p.batchCalls {
-		rows = append(rows, object{"index": i, "name": call.Function.Name, "result": values[call.ID]})
-	}
-	value := jsonText(object{"results": rows})
-	if p.submitted {
-		if value != p.value {
-			return nil, apiFail(409, "tool_result_conflict", "Different results already supplied for this batch")
-		}
-		return p.next, nil
-	}
-	t := p.turn
-	if t.done {
-		if t.err != nil {
-			return nil, t.err
-		}
-		return nil, apiFail(409, "task_finished", "The upstream task has already ended")
-	}
-	x := newExchange(req.Model)
-	previousExchange, previousRequest := t.current, t.request
-	p.submitted, p.value, p.next = true, value, x
-	t.current = x
-	req.Tools, req.ToolChoice, req.Parallel = t.request.Tools, t.request.ToolChoice, t.request.Parallel
-	t.request = req
-	if err := g.checkpointLocked(t); err != nil {
-		p.submitted, p.value, p.next = false, "", nil
-		t.current, t.request = previousExchange, previousRequest
-		return nil, apiFail(500, "state_persistence_failed", "Could not persist tool batch; nothing was uploaded")
-	}
-	p.result <- value
-	return x, nil
 }

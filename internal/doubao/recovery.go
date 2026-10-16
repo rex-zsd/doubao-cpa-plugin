@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -16,7 +15,7 @@ func exchangeRecord(x *apiExchange) any {
 	if x == nil {
 		return nil
 	}
-	record := object{"id": x.id, "model": x.model, "created": x.created}
+	record := object{"id": x.id, "model": x.model, "created": x.created, "prompt_tokens": x.prompt}
 	select {
 	case <-x.ready:
 		record["resolved"], record["message"], record["finish"], record["error"], record["error_status"] = true, x.message, x.finish, x.err, errorStatus(x.err)
@@ -32,6 +31,7 @@ func restoreExchange(v any, model string) *apiExchange {
 	if created := number(field(v, "created")); created != 0 {
 		x.created = int64(created)
 	}
+	x.prompt = number(field(v, "prompt_tokens"))
 	if field(v, "resolved") == true || field(v, "message") != nil {
 		var message apiMessage
 		_ = json.Unmarshal([]byte(jsonText(field(v, "message"))), &message)
@@ -220,7 +220,7 @@ func (g *gateway) resumeNative(t *gatewayTurn) {
 		return
 	}
 	ctx, cancel := context.WithCancel(t.ctx)
-	var streamDone chan error
+	var streamDone <-chan error
 	streamJoined := false
 	defer func() {
 		cancel()
@@ -244,22 +244,7 @@ func (g *gateway) resumeNative(t *gatewayTurn) {
 				pending = append(pending, frame)
 			}
 		}
-		streamDone = make(chan error, 1)
-		go func() {
-			response, streamErr := g.c.request(ctx, "POST", "/alice/office/tool_local/chunk_stream", url.Values{"sand_box_id": {t.sandbox}, "client_version": {"unspecified"}}, object{"device_id": g.c.session.DeviceID, "client_attrs": object{"sandbox_id": t.sandbox}})
-			if streamErr == nil {
-				for _, frame := range pending {
-					if streamErr = p.handle(ctx, frame); streamErr != nil {
-						break
-					}
-				}
-				if streamErr == nil {
-					streamErr = consumeSSE(response.Body, func(_ string, frame object, _ string) (bool, error) { return false, p.handle(ctx, frame) })
-				}
-				response.Body.Close()
-			}
-			streamDone <- streamErr
-		}()
+		streamDone = g.serveTools(ctx, ctx, cancel, p, pending)
 	}
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
@@ -304,7 +289,13 @@ func (g *gateway) resumeNative(t *gatewayTurn) {
 		stop()
 	}
 	_ = g.removeConnector(t)
-	g.finish(t, "", apiFail(409, "recovery_interrupted", "Original task could not be resumed; no new generation was created"))
+	g.mu.Lock()
+	failure := t.abort
+	g.mu.Unlock()
+	if failure == nil {
+		failure = apiFail(409, "recovery_interrupted", "Original task could not be resumed; no new generation was created")
+	}
+	g.finish(t, "", failure)
 	_ = err
 }
 

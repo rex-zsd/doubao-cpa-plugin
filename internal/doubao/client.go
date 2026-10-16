@@ -163,6 +163,10 @@ type Client struct {
 	mediaMu   sync.Mutex
 	fileMu    sync.Mutex
 	saveMu    sync.Mutex
+	// deferToNewer stops a long-lived provider client from overwriting a
+	// session.json that another process, normally helper login, replaced.
+	deferToNewer bool
+	saved        os.FileInfo
 }
 
 func newClient(dir string) (*Client, error) {
@@ -170,11 +174,13 @@ func newClient(dir string) (*Client, error) {
 		return nil, err
 	}
 	c := &Client{dir: dir, jar: newJar(), session: session{Version: 1, WebID: deviceID(), DeviceID: deviceID()}}
-	b, err := os.ReadFile(filepath.Join(dir, "session.json"))
+	path := filepath.Join(dir, "session.json")
+	b, err := os.ReadFile(path)
 	if err == nil {
 		if err = decode(bytes.NewReader(b), &c.session); err != nil {
 			return nil, errors.New("invalid saved session")
 		}
+		c.saved, _ = os.Stat(path)
 	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
@@ -186,7 +192,11 @@ func newClient(dir string) (*Client, error) {
 		copy := row.Cookie
 		c.jar.SetCookies(u, []*http.Cookie{&copy})
 	}
-	c.http = &http.Client{Jar: c.jar, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
+	// HTTP/2 pings notice a connection that died without a reset; otherwise a
+	// request on it waits for the task deadline.
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.HTTP2 = &http.HTTP2Config{SendPingTimeout: 30 * time.Second, PingTimeout: 15 * time.Second}
+	c.http = &http.Client{Transport: transport, Jar: c.jar, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
 	return c, nil
 }
 func saveJSON(path string, value any) error {
@@ -224,8 +234,29 @@ func saveJSON(path string, value any) error {
 func (c *Client) save() error {
 	c.saveMu.Lock()
 	defer c.saveMu.Unlock()
+	path := filepath.Join(c.dir, "session.json")
+	if c.deferToNewer && c.replaced(path) {
+		return nil
+	}
 	c.session.Cookies = c.jar.snapshot()
-	return saveJSON(filepath.Join(c.dir, "session.json"), c.session)
+	if err := saveJSON(path, c.session); err != nil {
+		return err
+	}
+	c.saved, _ = os.Stat(path)
+	return nil
+}
+
+// replaced reports whether session.json is no longer the file this client
+// last loaded or wrote. Callers hold saveMu.
+func (c *Client) replaced(path string) bool {
+	info, err := os.Stat(path)
+	switch {
+	case err != nil:
+		return c.saved != nil
+	case c.saved == nil:
+		return true
+	}
+	return !os.SameFile(info, c.saved) || !info.ModTime().Equal(c.saved.ModTime()) || info.Size() != c.saved.Size()
 }
 func trustedURL(route string) (*url.URL, error) {
 	base, _ := url.Parse(origin)

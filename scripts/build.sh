@@ -9,7 +9,8 @@ export CGO_ENABLED=1
 export GOTOOLCHAIN=${GOTOOLCHAIN:-go1.26.0}
 go test -race ./...
 go build -trimpath -buildvcs=false -buildmode=c-shared -o "$output_dir/doubao-work.so" ./cmd/cliproxy-plugin
-go build -trimpath -buildvcs=false -o "$output_dir/doubao-helper" ./cmd/doubao-helper
+# The helper runs inside the CPA container or on the host; keep it static.
+CGO_ENABLED=0 go build -trimpath -buildvcs=false -o "$output_dir/doubao-helper" ./cmd/doubao-helper
 if [[ $# -ge 2 ]]; then
  cpa_source=$2
  pinned=5fc580b1d72d87a7bcfe5cfb6f479c1aea5625b3

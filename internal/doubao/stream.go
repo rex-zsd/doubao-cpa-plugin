@@ -119,7 +119,8 @@ func (g *gateway) answerObserver(t *gatewayTurn) func(string, object) error {
 		x := t.current
 		// Tool boundaries are atomic. Do not leak Work plans or commentary into the
 		// full-history function protocol before its final readback is confirmed.
-		enabled := len(t.request.Tools) == 0 || t.request.ToolChoice == "none"
+		// JSON answers stream whole, since the final one may lose a fence.
+		enabled := !usesTools(t.request) && !jsonMode(t.request)
 		g.mu.Unlock()
 		if enabled {
 			x.updateVisible(text)

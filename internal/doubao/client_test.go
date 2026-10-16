@@ -3,9 +3,11 @@ package doubao
 import (
 	"context"
 	"errors"
+	"image/png"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -82,6 +84,44 @@ func TestCookieScopeAndExpirySurviveRestart(t *testing.T) {
 		t.Fatal("expired cookie resurrected")
 	}
 }
+func TestProviderKeepsNewerHelperLogin(t *testing.T) {
+	dir := t.TempDir()
+	u, _ := url.Parse(origin + "/passport/web/get_qrcode/")
+	login := func(value string) {
+		helper, err := newClient(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		helper.jar.SetCookies(u, []*http.Cookie{{Name: "auth", Value: value, Secure: true, Path: "/passport", MaxAge: 3600}})
+		if err := helper.save(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	login("old-login")
+	provider, err := newClient(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider.deferToNewer = true
+	s := &Service{c: provider}
+	if err := provider.save(); err != nil || s.SessionReplaced() {
+		t.Fatal("provider stopped tracking its own session", err)
+	}
+	login("new-login")
+	if !s.SessionReplaced() {
+		t.Fatal("helper login was not detected")
+	}
+	if err := provider.save(); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := newClient(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := loaded.jar.Cookies(u); len(got) != 1 || got[0].Value != "new-login" {
+		t.Fatal("stale provider cookies overwrote the newer login")
+	}
+}
 func TestEndpointGuardRejectsCredentialExfiltration(t *testing.T) {
 	for _, s := range []string{"https://doubao.com.attacker.invalid/", "http://www.doubao.com/", "https://user@www.doubao.com/", "https://www.doubao.com:443/"} {
 		if _, err := trustedURL(s); err == nil {
@@ -128,6 +168,61 @@ func TestPassportAbsoluteExpiryAndTTL(t *testing.T) {
 		if seconds != 60 || !deadline.Equal(now.Add(time.Minute)) {
 			t.Fatalf("expiry metadata wrong for %v: %v, %d", raw, deadline, seconds)
 		}
+	}
+}
+
+func TestLoginQRCodeNeedsNoExternalEncoder(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "login-qr.png")
+	if err := writeQRPNG(path, "https://www.doubao.com/passport/web/qrcode_index?token=fixture"); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(path); err != nil || info.Mode().Perm() != 0600 {
+		t.Fatal("QR image must be private", err)
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	img, err := png.Decode(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Same geometry as the former `qrencode -s 8 -m 4`: 8-pixel modules and a
+	// 4-module quiet zone around a 17+4v module symbol.
+	b := img.Bounds()
+	if b.Dx() != b.Dy() || b.Dx()%8 != 0 || (b.Dx()/8-8-21)%4 != 0 {
+		t.Fatal("unexpected QR geometry", b)
+	}
+	black := func(x, y int) bool { r, _, _, _ := img.At(x, y).RGBA(); return r < 0x8000 }
+	if black(0, 0) || !black(4*8, 4*8) {
+		t.Fatal("QR image lacks its quiet zone or finder pattern")
+	}
+}
+
+func TestNativeClientKeepsRedirectCookiesWithoutFollowing(t *testing.T) {
+	c, err := newClient(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	c.http.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		calls++
+		h := http.Header{"Location": {"https://other.example/next"}, "Set-Cookie": {"sessionid=fixture; Path=/; Domain=.doubao.com; Secure; HttpOnly"}}
+		return &http.Response{StatusCode: 302, Header: h, Body: io.NopCloser(strings.NewReader("")), Request: req}, nil
+	})
+	r, err := c.request(context.Background(), "GET", "/passport/web/fixture_redirect/", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Body.Close()
+	u, _ := trustedURL("/")
+	kept := false
+	for _, cookie := range c.jar.Cookies(u) {
+		kept = kept || cookie.Name == "sessionid" && cookie.Value == "fixture"
+	}
+	if calls != 1 || r.StatusCode != 302 || !kept {
+		t.Fatalf("native client must stop at redirects and keep their cookies: calls=%d status=%d kept=%v", calls, r.StatusCode, kept)
 	}
 }
 

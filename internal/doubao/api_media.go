@@ -267,11 +267,26 @@ func (c *Client) prepareAPIMedia(ctx context.Context, req apiRequest) (apiReques
 				return req, nil, err
 			}
 			records = append(records, record)
-			text = append(text, fmt.Sprintf("[附件 %d：%s，来自第 %d 条 %s 消息]", len(records), name, i+1, m.Role))
+			text = append(text, mediaPlaceholder(len(records), name, i+1, m.Role))
 		}
 		clone.Messages[i].Content = strings.Join(text, "\n")
 	}
 	return clone, records, nil
+}
+
+// mediaPlaceholder stands in for attachment n inside the rendered transcript.
+func mediaPlaceholder(n int, name string, message int, role string) string {
+	return fmt.Sprintf("[附件 %d：%s，来自第 %d 条 %s 消息]", n, name, message, role)
+}
+
+// mediaLabel names an attachment before it is resolved, for size estimates.
+func mediaLabel(part any) string {
+	for _, key := range []string{"filename", "file_id"} {
+		if name := textValue(field(part, "file", key)); name != "" {
+			return name
+		}
+	}
+	return "attachment"
 }
 
 func apiResultText(content any) string {
@@ -292,6 +307,17 @@ func (c *Client) nativeResultContent(ctx context.Context, value string) ([]any, 
 	if !recognized {
 		return []any{object{"type": "text", "text": value}}, nil
 	}
+	// Caller text that followed the results goes last, outside any media
+	// observation.
+	notes, rest := []any{}, []any{}
+	for _, part := range parts {
+		if field(part, "user_message") == true {
+			notes = append(notes, object{"type": "text", "text": textValue(field(part, "text"))})
+		} else {
+			rest = append(rest, part)
+		}
+	}
+	parts = rest
 	if scope, ok := ctx.Value(toolMediaScopeKey{}).(toolMediaScope); ok && scope.model.ID != "" {
 		hasMedia := false
 		for _, part := range parts {
@@ -304,7 +330,7 @@ func (c *Client) nativeResultContent(ctx context.Context, value string) ([]any, 
 			if err != nil {
 				return nil, err
 			}
-			return []any{object{"type": "text", "text": "Adapter media reader observations (from the real tool attachments):\n" + observation}}, nil
+			return append([]any{object{"type": "text", "text": "Adapter media reader observations (from the real tool attachments):\n" + observation}}, notes...), nil
 		}
 	}
 	result := []any{}
@@ -323,7 +349,7 @@ func (c *Client) nativeResultContent(ctx context.Context, value string) ([]any, 
 			result = append(result, object{"type": "resource", "resource": object{"uri": "file:///" + url.PathEscape(name), "mimeType": kind, "blob": base64.StdEncoding.EncodeToString(data)}})
 		}
 	}
-	return result, nil
+	return append(result, notes...), nil
 }
 
 func (c *Client) nativeToolReply(ctx context.Context, native object, value string, batch bool) (object, error) {
@@ -348,6 +374,9 @@ func (c *Client) nativeToolReply(ctx context.Context, native object, value strin
 					return nil, err
 				}
 				content = append(content, parts...)
+			}
+			if note := textValue(field(parsed(value), "user_message")); note != "" {
+				content = append(content, object{"type": "text", "text": note})
 			}
 		}
 	} else {

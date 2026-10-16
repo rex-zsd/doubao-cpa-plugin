@@ -18,10 +18,15 @@ import (
 type Model struct {
 	ID        string   `json:"id"`
 	Name      string   `json:"name"`
+	Display   string   `json:"display,omitempty"`
 	Provider  string   `json:"provider"`
 	Think     int      `json:"think"`
 	Available bool     `json:"available"`
 	Modes     []string `json:"modes"`
+	// Window is the catalog's advertised context window in tokens. Each
+	// request is still one message capped at maxPromptChars.
+	Window  int   `json:"window,omitempty"`
+	Efforts []int `json:"efforts,omitempty"`
 }
 
 func contains(values []string, v string) bool {
@@ -73,7 +78,13 @@ func (c *Client) models(ctx context.Context) ([]Model, error) {
 		}
 		m := byID[id]
 		if m == nil {
-			m = &Model{ID: id, Name: name, Provider: textValue(field(item, "model_extra_params", "provider_id")), Think: number(field(item, "item_id")), Available: !truthy(field(item, "disabled")) && !truthy(field(item, "subscribe_config", "need_upgrade")), Modes: []string{}}
+			m = &Model{ID: id, Name: name, Display: name, Provider: textValue(field(item, "model_extra_params", "provider_id")), Think: number(field(item, "item_id")), Available: !truthy(field(item, "disabled")) && !truthy(field(item, "subscribe_config", "need_upgrade")), Modes: []string{}, Window: number(field(item, "model_extra_params", "total_window_size"))}
+			for _, option := range array(field(item, "reasoning_effort_config", "option_list")) {
+				if level := number(field(option, "level")); level > 0 {
+					m.Efforts = append(m.Efforts, level)
+				}
+			}
+			sort.Ints(m.Efforts)
 			byID[id] = m
 			if n, e := strconv.Atoi(id); e == nil {
 				m.Think = n
@@ -240,6 +251,49 @@ func jsonText(v any) string {
 	return string(b)
 }
 
+// plainJSON is jsonText without HTML escaping, so transcripts keep <, > and &
+// as typed instead of growing six-character escapes.
+func plainJSON(v any) string {
+	var b strings.Builder
+	e := json.NewEncoder(&b)
+	e.SetEscapeHTML(false)
+	if err := e.Encode(v); err != nil {
+		panic(err)
+	}
+	return strings.TrimSuffix(b.String(), "\n")
+}
+
+// upstreamError is a STREAM_ERROR frame. Doubao sends it before ACK for
+// requests it refuses, e.g. 710020202 for an oversized message.
+type upstreamError struct {
+	Code    int
+	Message string
+}
+
+func (e *upstreamError) Error() string {
+	message := e.Message
+	if r := []rune(message); len(r) > 200 {
+		message = string(r[:200])
+	}
+	return fmt.Sprintf("Doubao rejected the request (%d: %s)", e.Code, message)
+}
+
+// applyEffort selects Work's reasoning level: the highest catalog option not
+// above level, else the lowest. Zero keeps the model default.
+func applyEffort(body object, model Model, level int) {
+	ext, ok := body["ext"].(object)
+	if level <= 0 || len(model.Efforts) == 0 || !ok {
+		return
+	}
+	chosen := model.Efforts[0]
+	for _, option := range model.Efforts {
+		if option <= level {
+			chosen = option
+		}
+	}
+	ext["reasoning_effort"] = strconv.Itoa(chosen)
+}
+
 func (c *Client) run(ctx context.Context, body object, receiptPath string) (*Receipt, error) {
 	return c.runObserved(ctx, body, receiptPath, nil)
 }
@@ -301,7 +355,7 @@ func (c *Client) runObserved(ctx context.Context, body object, receiptPath strin
 				return true, checkpoint()
 			}
 		case "STREAM_ERROR", "gateway-error":
-			return false, errors.New("upstream stream error")
+			return false, &upstreamError{Code: number(data["error_code"]), Message: textValue(data["error_msg"])}
 		}
 		return false, checkpoint()
 	}

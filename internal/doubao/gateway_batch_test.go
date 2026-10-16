@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 )
@@ -126,11 +127,13 @@ func TestBatchResultsAtomicOutOfOrderAndIdempotent(t *testing.T) {
 	if code != 200 || jsonText(answer) != jsonText(replay) || uploads.Load() != 1 {
 		t.Fatal("duplicate upload or changed answer", code, replay)
 	}
+	// Different results for an answered batch start a new task over the
+	// full transcript instead of failing.
 	conflict := continuation
 	conflict.Messages = append([]apiMessage{}, continuation.Messages...)
 	conflict.Messages[len(conflict.Messages)-1].Content = "different"
-	if code, _ := postGateway(t, server, conflict, ""); code != 409 {
-		t.Fatal("conflicting results accepted", code)
+	if code, replaced := postGateway(t, server, conflict, ""); code != 200 || len(returnedMessage(t, replaced).ToolCalls) != 3 || starts.Load() != 2 {
+		t.Fatal("conflicting results did not start a new task", code, replaced, starts.Load())
 	}
 	changed := req
 	parallelFalse := false
@@ -164,5 +167,39 @@ func TestBatchStreamingExposesAllIndexedCalls(t *testing.T) {
 	}
 	if count != 3 {
 		t.Fatal("lost streaming tool calls", count)
+	}
+}
+
+func TestOversizedBatchCatalogFallsBackToSingleCalls(t *testing.T) {
+	req := toolRequest()
+	parallel := true
+	req.Parallel = &parallel
+	if !batchMode(req) || !strings.Contains(renderAPIPrompt(req, "connector"), batchToolName) {
+		t.Fatal("a small parallel catalog was not batched")
+	}
+	for i := 0; i < 10; i++ {
+		req.Tools = append(req.Tools, apiTool{Type: "function", Function: apiFunction{Name: fmt.Sprintf("lookup_%d", i), Description: strings.Repeat("x", 5000), Parameters: object{"type": "object", "properties": object{}}}})
+	}
+	if utf16Len(batchSchema(req.Tools)) <= batchSchemaLimit || batchMode(req) || strings.Contains(renderAPIPrompt(req, "connector"), batchToolName) {
+		t.Fatal("an oversized catalog was batched")
+	}
+	g, server := testGateway(t)
+	var starts, results atomic.Int32
+	var refused atomic.Bool
+	single := fakeToolRunner(g, &starts, &results)
+	g.run = func(turn *gatewayTurn) {
+		g.mu.Lock()
+		turn.connector = "fixture-connector"
+		g.mu.Unlock()
+		result, err := g.forwardClientTool(turn.ctx, turn, object{"id": "native-batch", "name": "connector.call", "input": "native-input"}, object{"protocol_version": 1, "connector_id": "fixture-connector", "remote_tool_name": batchToolName, "raw_arguments": `{"calls":[{"name":"client_nonce","arguments":{"challenge":"unit"}}]}`})
+		refused.Store(err == nil && result["isError"] == true)
+		single(turn)
+	}
+	code, first := postGateway(t, server, req, "")
+	if code != 200 || !refused.Load() {
+		t.Fatal("the batch tool was offered", code, first)
+	}
+	if calls := returnedMessage(t, first).ToolCalls; len(calls) != 1 || calls[0].Function.Name != "client_nonce" {
+		t.Fatal("the single call was not exposed", first)
 	}
 }

@@ -7,10 +7,10 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
+
+	"rsc.io/qr"
 )
 
 // The live Passport service returns an absolute Unix timestamp; accept TTLs
@@ -33,6 +33,19 @@ func qrExpiry(raw any, now time.Time) (time.Time, int) {
 		remaining = 0
 	}
 	return deadline, remaining
+}
+
+// writeQRPNG renders the QR in-process, so login works in minimal CPA
+// containers without an external qrencode binary.
+func writeQRPNG(path, text string) error {
+	code, err := qr.Encode(text, qr.M)
+	if err != nil {
+		return errors.New("QR image generation failed")
+	}
+	if err = os.WriteFile(path, code.PNG(), 0600); err != nil {
+		return err
+	}
+	return os.Chmod(path, 0600)
 }
 
 func qrData(v object) (any, error) {
@@ -76,12 +89,7 @@ func (c *Client) login(ctx context.Context) error {
 		return errors.New("QR response missing token or URL")
 	}
 	qrPath := filepath.Join(c.dir, "login-qr.png")
-	cmd := exec.CommandContext(ctx, "qrencode", "-o", qrPath, "-s", "8", "-m", "4")
-	cmd.Stdin = strings.NewReader(qrURL)
-	if err := cmd.Run(); err != nil {
-		return errors.New("QR image generation failed")
-	}
-	if err := os.Chmod(qrPath, 0600); err != nil {
+	if err := writeQRPNG(qrPath, qrURL); err != nil {
 		return err
 	}
 	issuedAt := time.Now()

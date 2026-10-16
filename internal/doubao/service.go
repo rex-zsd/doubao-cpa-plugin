@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -16,7 +18,18 @@ type ServiceConfig struct {
 	Transport            http.RoundTripper
 	TaskTimeout          time.Duration
 }
-type PublicModel struct{ ID, DisplayName string }
+
+// PublicModel is a routable model: ID is its slug, DisplayName the catalog
+// name, Window the advertised context and Efforts Work's reasoning levels.
+type PublicModel struct {
+	ID, DisplayName string
+	Window          int
+	Efforts         []int
+}
+
+// MaxPromptChars is Work's per-request message limit in UTF-16 code units.
+const MaxPromptChars = maxPromptChars
+
 type Service struct {
 	c      *Client
 	g      *gateway
@@ -49,6 +62,7 @@ func OpenService(ctx context.Context, config ServiceConfig) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.deferToNewer = true
 	if config.Transport != nil {
 		c.http.Transport = config.Transport
 		c.mediaHTTP = &http.Client{Transport: config.Transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
@@ -62,23 +76,10 @@ func OpenService(ctx context.Context, config ServiceConfig) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	aliases := []Model{}
+	aliases := publicModels(models)
 	public := []PublicModel{}
-	for _, m := range models {
-		if m.Available && contains(m.Modes, "work") {
-			alias := "doubao-work-" + m.ID
-			public = append(public, PublicModel{alias, m.Name})
-			m.Name = alias
-			aliases = append(aliases, m)
-		}
-	}
-	for _, m := range models {
-		if m.Available && contains(m.Modes, "work") && m.Name == "豆包 2.1 Pro" {
-			m.Name = "doubao-work-pro"
-			aliases = append(aliases, m)
-			public = append(public, PublicModel{m.Name, "豆包 2.1 Pro"})
-			break
-		}
+	for _, m := range aliases {
+		public = append(public, PublicModel{ID: m.Name, DisplayName: m.Display, Window: m.Window, Efforts: m.Efforts})
 	}
 	if len(aliases) == 0 {
 		return nil, errors.New("no available Work models")
@@ -104,6 +105,48 @@ func (s *Service) Validate(ctx context.Context) error {
 	}
 	return nil
 }
+
+// publicModels keeps the Work models and names each by its slug. CPA routes by
+// name across providers, so every slug carries the doubao- prefix.
+func publicModels(models []Model) []Model {
+	public, seen := []Model{}, map[string]bool{}
+	for _, m := range models {
+		if !m.Available || !contains(m.Modes, "work") {
+			continue
+		}
+		slug := modelSlug(m)
+		if seen[slug] {
+			slug += "-" + m.ID
+		}
+		seen[slug] = true
+		m.Name = slug
+		public = append(public, m)
+	}
+	return public
+}
+
+var slugSeparator = regexp.MustCompile(`[^a-z0-9.]+`)
+
+// modelSlug turns a catalog name such as "豆包 2.1 Pro" or "GPT-6.1 Sol" into
+// doubao-2.1-pro or doubao-gpt-6.1-sol.
+func modelSlug(m Model) string {
+	if m.Name == "自动" {
+		return "doubao-auto"
+	}
+	slug := strings.Trim(slugSeparator.ReplaceAllString(strings.ToLower(strings.ReplaceAll(m.Name, "豆包", "")), "-"), "-.")
+	if slug == "" {
+		slug = m.ID
+	}
+	return "doubao-" + slug
+}
+
+// SessionReplaced reports that another login rewrote session.json; the
+// service keeps stale cookies until it is reopened.
+func (s *Service) SessionReplaced() bool {
+	s.c.saveMu.Lock()
+	defer s.c.saveMu.Unlock()
+	return s.c.replaced(filepath.Join(s.c.dir, "session.json"))
+}
 func (s *Service) Close() {
 	s.g.mu.Lock()
 	s.g.suspending = true
@@ -112,9 +155,15 @@ func (s *Service) Close() {
 	s.g.wg.Wait()
 	unlockFile(s.lock)
 }
-func (e *apiError) StatusCode() int { return e.Status }
+func (e *apiError) StatusCode() int   { return e.Status }
+func (e *apiError) ErrorCode() string { return e.Code }
+func (e *apiError) ErrorType() string { return e.Type }
 
-type Response struct{ x *apiExchange }
+type Response struct {
+	x *apiExchange
+	// usage asks for the separate usage chunk of stream_options.include_usage.
+	usage bool
+}
 
 func (s *Service) Submit(ctx context.Context, payload []byte, key string) (*Response, error) {
 	req, failure := parseAPIRequest(bytes.NewReader(payload))
@@ -122,13 +171,15 @@ func (s *Service) Submit(ctx context.Context, payload []byte, key string) (*Resp
 		return nil, failure
 	}
 	if _, _, err := selectModel(s.g.models, req.Model, "work"); err != nil {
-		return nil, apiFail(400, "model_not_found", "Select an available doubao-work model")
+		// Not model_not_found: CPA would bench the model for 12 hours, past the
+		// next catalog reload that may bring it back.
+		return nil, apiFail(400, "invalid_model", "Select a model listed by /v1/models")
 	}
 	x, failure := s.g.submit(req, key)
 	if failure != nil {
 		return nil, failure
 	}
-	return &Response{x}, nil
+	return &Response{x: x, usage: truthy(req.StreamOptions["include_usage"])}, nil
 }
 func (r *Response) Complete(ctx context.Context) ([]byte, error) {
 	select {
@@ -141,35 +192,11 @@ func (r *Response) Complete(ctx context.Context) ([]byte, error) {
 	}
 	return json.Marshal(apiCompletion(r.x))
 }
+
+// Stream emits SSE frames and returns the upstream failure, if any, so the
+// host can close the stream with an error instead of a silent end.
 func (r *Response) Stream(ctx context.Context, emit func([]byte) error) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	w := &emitWriter{headers: http.Header{}, emit: func(data []byte) error {
-		err := emit(data)
-		if err != nil {
-			cancel()
-		}
-		return err
-	}}
-	request, _ := http.NewRequestWithContext(ctx, "POST", "http://plugin/v1/chat/completions", nil)
-	writeAPIExchange(w, request, r.x, true)
-	return w.err
-}
-
-type emitWriter struct {
-	headers http.Header
-	emit    func([]byte) error
-	err     error
-}
-
-func (w *emitWriter) Header() http.Header { return w.headers }
-func (w *emitWriter) WriteHeader(int)     {}
-func (w *emitWriter) Flush()              {}
-func (w *emitWriter) Write(p []byte) (int, error) {
-	if w.err == nil {
-		w.err = w.emit(p)
-	}
-	return len(p), w.err
+	return streamExchange(ctx, func(frame string) error { return emit([]byte(frame)) }, r.x, r.usage)
 }
 
 func (s *Service) HasActiveTasks() bool {

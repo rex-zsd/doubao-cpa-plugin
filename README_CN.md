@@ -1,60 +1,150 @@
 # 豆包 Work · CLIProxyAPI 原生插件
 
-独立 Go 协议实现，通过 CPA 的 C ABI 加载 `.so`，不依赖或执行 doubao-cli，也不需要额外启动网关进程。当前交付针对 Linux amd64、单账号。
+把豆包 Work 接成 CLIProxyAPI（CPA）的模型提供方。OpenAI Chat Completions / Responses 客户端可以直接调用；Claude、Gemini 客户端经 CPA 转换后也能用。客户端函数通过真实 MCP 连接器交给 Work 调用。
 
-豆包 Work 实际运行的是 agent。这个插件把其对话和真实连接器调用转换成 LLM API；系统消息优先级、温度、token 预算等底层模型语义不能因此自动获得。
+插件是独立的 Go 协议实现，通过 CPA 的 C ABI 加载 `.so`。它不依赖也不执行 doubao-cli，也不需要另起网关进程。目前只支持 Linux amd64、单账号。
 
-## 安装与启动
+豆包 Work 实际运行的是 agent，插件把它的对话和真实连接器调用转换成 LLM API。系统消息优先级、温度、token 预算等底层模型语义无法因此获得，见下文的参数表。
 
-固定宿主版本为 `router-for-me/CLIProxyAPI@5fc580b1d72d87a7bcfe5cfb6f479c1aea5625b3`。必须使用交付的修补宿主，或应用 `patches/cpa-http-wire.patch` 后自行构建。原版宿主缺少所需的重定向控制，不能直接替换使用。
+当前版本为 0.3.7，已在官方 CPA v8.0.13 上实测。
 
-从 [v0.1.0 Release](https://github.com/rex-zsd/doubao-cpa-plugin/releases/tag/v0.1.0) 下载插件包、修补宿主包及 `SHA256SUMS`。安装方法见 [二进制安装说明](docs/BINARY_INSTALL_CN.md)。当前为实验版 v0.1.0。
+## 安装到 CPA v8
 
-管理页面的管理密钥、模型 API key 和豆包登录会话用途不同。`missing management key` 的配置与排查见 `docs/AUTH_TROUBLESHOOTING_CN.md`。本版提供扫码登录，尚未提供原始 Cookie 文本的页面导入入口。
-
-运行依赖 Linux amd64、glibc 2.34 或更新、`qrencode`；安装脚本还需要 Python 3。扫码辅助程序生成本地二维码，账户凭据只写在私有 state 目录。
-
-解压二进制包后：
-
-```bash
-./scripts/install.sh /absolute/doubao-cpa
-/absolute/doubao-cpa/bin/doubao-helper -action login \
-  -dir /absolute/doubao-cpa/state -out /absolute/doubao-cpa/state/login-evidence
-```
-
-打开 `state/login-qr.png`，使用豆包客户端扫码并确认。看到 `state/login-status.json` 的 `status=verified` 后启动：
-
-```bash
-/absolute/doubao-cpa/bin/cli-proxy-api --local-model \
-  --config /absolute/doubao-cpa/config.yaml
-```
-
-安装脚本生成独立 API key，保存于权限为 0600 的 `config.yaml`，默认监听 `127.0.0.1:18322`。客户端使用 `http://127.0.0.1:18322/v1`，model 选 `doubao-work-pro`；其他实时可用模型见 `/v1/models`。不要复用整个示例配置覆盖已有 CPA 配置，可把插件配置、账号标记和相关重试配置合入原有文件。
-
-模型清单在首次打开服务时加载并缓存，重启后重新查询；没有固定 8 项的上限。GPT 等模型的数字 API ID 与显示名映射、清单排查见 `docs/MODEL_CATALOG_CN.md`。
-
-若从源码构建，需要 Go 1.26、CGO、C 编译器，以及固定版本的 CPA checkout：
+运行依赖：Linux amd64，glibc 2.34 或更新。构建需要 Go 1.26、CGO 和 C 编译器：
 
 ```bash
 git clone https://github.com/rex-zsd/doubao-cpa-plugin.git
 cd doubao-cpa-plugin
-git clone https://github.com/router-for-me/CLIProxyAPI.git /absolute/CLIProxyAPI
-git -C /absolute/CLIProxyAPI checkout 5fc580b1d72d87a7bcfe5cfb6f479c1aea5625b3
-./scripts/build.sh /absolute/build-output /absolute/CLIProxyAPI
-python3 scripts/package.py --build-dir /absolute/build-output --out-dir /absolute/packages
+./scripts/build.sh /absolute/build-output
 ```
 
-此命令运行 race 回归，构建插件和 helper，校验、应用宿主补丁并构建宿主。构建目录可自行指定；本仓库不保存任何登录会话。
+构建前会先跑 race 回归。完成后得到 `doubao-work.so` 和静态链接的 `doubao-helper`。
 
-## Chat、Responses 与工具
+把这两个文件放进 CPA 的插件目录。`.so` 的文件名要带版本号：CPA 按 `<id>-v<版本>.so` 识别插件，同一插件有多个版本时加载最高的那个。
 
-支持 `/v1/chat/completions` 和 `/v1/responses`，包含非流式和流式。每次都必须携带完整可见历史。`instructions` 和 system/developer 消息会保留为带角色的对话记录，不承诺原生 system 优先级。`previous_response_id`、后台 Responses 存储不支持。
+```text
+plugins/linux/amd64/doubao-work-v0.3.7.so
+plugins/doubao-work/bin/doubao-helper
+```
 
-客户端 functions 通过真实 MCP 连接器提供给 Work。收到标准 `tool_calls` / `function_call` 后，由客户端执行，再把原始 assistant 调用和 tool 结果一起回传；插件将结果交回**原来的 Work 任务**。本地 shell、读写文件等未声明工具不会被执行。
+在 `config.yaml` 中加入以下配置，路径写 CPA 进程（容器内）看到的路径：
 
-显式设置 `parallel_tool_calls=true` 时，原生端提供 `client_tools_batch`，模型在一次真实调用里选择 1–8 个独立函数。API 拆成多个 call_id，由客户端并行执行。一个批次的结果必须在同一请求内全部提交，顺序可以改变；依赖前一批结果的调用应进入下一批。当前没有证明 Work 原生可以同时挂起多个独立调用，批处理方式是本适配器明确提供的语义。
+```yaml
+plugins:
+  enabled: true
+  dir: /CLIProxyAPI/plugins
+  configs:
+    doubao-work:
+      enabled: true
+      state_dir: /CLIProxyAPI/plugins/doubao-work/state
+      helper_path: /CLIProxyAPI/plugins/doubao-work/bin/doubao-helper
+```
 
-首次请求建议带 `Idempotency-Key`（最多 128 字符）。同一 key 和相同请求会复用原任务；相同 key 配不同请求返回 409。工具结果按 call_id 去重，冲突结果返回 409。请配置 SDK `max_retries=0`，CPA `request-retry=0`、`bootstrap-retries=0`、`max-retry-credentials=1`，避免其他层将不确定写请求作为新请求重试。
+`host_http` 保持默认的 false。只有打过 `patches/cpa-http-wire.patch` 的宿主才支持它，官方宿主会静默忽略。
+
+扫码登录用 helper 完成。helper 是静态二进制，可以直接在宿主机上运行，`-dir` 写 state 目录在宿主机上的路径：
+
+```bash
+/path/to/cpa/plugins/doubao-work/bin/doubao-helper -action login \
+  -dir /path/to/cpa/plugins/doubao-work/state \
+  -out /path/to/cpa/plugins/doubao-work/state/login-evidence
+```
+
+用豆包客户端扫描 `state/login-qr.png` 并确认，等 `state/login-status.json` 显示 `status=verified`。插件会在空闲时自动换用新会话，不需要重启 CPA。账户凭据只写在私有的 state 目录。
+
+升级时，把新版本的 `.so` 复制进同一目录。CPA 配置热重载后会切换到最高版本，在 `config.yaml` 末尾追加一行注释即可触发热重载。确认切换后，把旧版本文件移出插件目录。
+
+管理页面的管理密钥、模型 API key 和豆包登录会话三者用途不同，`missing management key` 的排查见 `docs/AUTH_TROUBLESHOOTING_CN.md`。
+
+[v0.1.0 Release](https://github.com/rex-zsd/doubao-cpa-plugin/releases/tag/v0.1.0) 的安装包面向固定版本的修补宿主，与上面的插件目录方式不同，安装方法见 [二进制安装说明](docs/BINARY_INSTALL_CN.md)。从源码构建修补宿主时，给 `scripts/build.sh` 传第二个参数，即固定 commit `5fc580b1d72d87a7bcfe5cfb6f479c1aea5625b3` 的 CPA checkout。
+
+## 模型
+
+插件在首次打开服务时读取当前账号的 Work 模型清单，只注册可用且支持 Work 模式的项。显示名会转成固定的 slug：去掉“豆包”，转小写，字母、数字和点以外的字符换成 `-`，再加上 `doubao-` 前缀。“自动”对应 `doubao-auto`，重名时追加上游模型 key。
+
+| Work 显示名 | model |
+|---|---|
+| 自动 | `doubao-auto` |
+| 豆包 2.1 Pro | `doubao-2.1-pro` |
+| 豆包 2.1 Turbo | `doubao-2.1-turbo` |
+| 豆包 2.1 Lite | `doubao-2.1-lite` |
+| GPT-6.1 Sol | `doubao-gpt-6.1-sol` |
+| GPT-6 Astra | `doubao-gpt-6-astra` |
+| GPT-5.6 Sol | `doubao-gpt-5.6-sol` |
+| Gemini 3.7 Flash | `doubao-gemini-3.7-flash` |
+| Orange 5.5 | `doubao-orange-5.5` |
+
+上表是 2026-10-16 测试账号的清单，会随账号权限和上游配置变化，以 `/v1/models` 为准。旧版的 `doubao-work-<数字>` 和 `doubao-work-pro` 已不再注册，用它们请求会返回 `model_not_found`。清单排查见 `docs/MODEL_CATALOG_CN.md`。
+
+Work 每次只接收一条消息，最多 262,144 个字符（UTF-16 码元）。插件把完整对话、函数说明和格式要求都渲染进这一条消息，所以 `/v1/models` 报告的上下文是 65,536 token，约等于 262,144 个英文字符。超长的请求返回 400 `context_length_exceeded`，消息采用 `prompt is too long: N tokens > M maximum` 格式，Claude Code 和 Codex 能据此自动压缩上下文。
+
+## 接口与参数
+
+支持 `/v1/chat/completions` 和 `/v1/responses`，非流式和流式都可以。Claude `/v1/messages` 和 Gemini 请求由 CPA 转换后进入插件。每次请求都必须携带完整的可见历史。`instructions` 和 system/developer 消息会保留为带角色的对话记录，但不承诺原生的 system 优先级。
+
+| 参数 | 处理方式 |
+|---|---|
+| `temperature`、`top_p`、`max_tokens`、`max_completion_tokens`、`max_output_tokens`、`stop`、`seed`、`presence_penalty`、`frequency_penalty`、`logprobs` 等 | 接受，但会被忽略。Work 没有这些开关（2026-10 实测） |
+| `reasoning_effort`、`reasoning.effort` | `none`/`minimal`/`low`、`medium`、`high`、`xhigh`、`max` 依次对应更高的思考档位，也接受 1–100 的数字。取模型支持的、不超过所请求档位的最高一档 |
+| `response_format`：`json_object`、`json_schema` | 转成提示词要求，并去掉回答外层的 Markdown 代码块。不做 strict 校验 |
+| `tool_choice` | 支持 `auto` 和 `none`。`required` 和指定函数会转成提示词要求，因为 Work 不能强制调用。无法识别的对象按 `auto` 处理 |
+| `parallel_tool_calls=true` | 通过 `client_tools_batch` 一次给出 1–8 个调用，见下节 |
+| `stream_options.include_usage` | 支持。usage 一律是估算值：约 4 个 ASCII 字符或 1 个其他字符计为 1 token，响应头为 `X-Doubao-Usage: estimated`，不能用于计费 |
+| `n` 不等于 1、音频输出、旧版 `functions`/`function_call` | 返回 400 |
+| `previous_response_id`、后台 Responses 存储 | 不支持 |
+
+Codex 的 Responses Lite 请求可以直接使用，包括 `additional_tools`、命名空间工具和 custom 工具。插件按 CPA 的规则把它们展开成函数名，例如 `functions__exec`。CPA 再把调用还原成带 `namespace` 的 `function_call`，custom 工具还原为 `custom_tool_call`。Gemini 客户端发来的 OpenAPI 风格大写类型名（`OBJECT`、`STRING` 等）会转成 JSON Schema。
+
+## 函数调用
+
+客户端函数通过真实 MCP 连接器提供给 Work。插件收到标准的 `tool_calls` / `function_call` 后交给客户端执行。客户端需要把原始 assistant 调用和 tool 结果一起回传，插件再把结果交回**原来的 Work 任务**。本地 shell、读写文件等未声明的工具不会被执行。
+
+Work 不把连接器工具直接列给模型：模型要先用 Work 自带的 `tool_search` 搜索，搜到后再按 Work 的方式调用。连接器工具在 Work 里的名字形如 `mcp__independent_http_tools_<编号>__get_weather`（函数名转成小写，`-` 换成 `_`）。`tool_search` 每次只返回 3 个工具。2026-10-16 实测：用完整名字搜索时，连接器工具排在第一；只写 `Read`、`Bash` 这样的函数名时，它排在同名的 Work 自带工具之后；一次搜几个函数（如 `Read Bash`）、写法与 Work 的名字不同（如 `read-File`）或用“读取文件内容”这类描述来搜时，3 个结果全是 Work 自带的工具，模型找不到客户端函数，就直接回答了。0.3.5 及更早的提示词只给出连接器名，13–20 个函数时 7 次里有 2 次这样失败；0.3.6 加上函数名后，Claude Code 3 次里仍有 2 次失败；0.3.7 起提示词列出每个函数的完整名字，并要求每次只按一个完整名字搜索（结果见[验收记录](docs/VALIDATION_CN.md)）。需要确保调用客户端函数时，可以再把 `tool_choice` 设为 `required` 或指定函数（同样是提示词要求，见上表）。
+
+函数的限制：
+
+- 最多 128 个函数。名称为 1–64 个字母、数字、`_` 或 `-`，不能重名。
+- 说明（description）：Work 会静默丢弃说明过长的连接器工具。这个上限按字符数计算，与字节数和 token 数无关，而且针对单个函数：逐个提供时，20 个 5,000 字符、12 个 8,000 字符的说明都能全部读到。2026-10-16 实测 33,515 个字符的说明可用，39,995 个不可用。超过 32,000 个字符的说明在连接器里只保留开头约 2,000 个字符和一条指引，完整说明放进提示词，计入 262,144 字符的上限。
+- 参数（parameters）：必须是 JSON Schema object，序列化后最多 1 MiB。Work 把一个函数的说明和参数结构合在一起读：2026-10-16 实测两者合计约 66,000 个字符时十秒左右就能读完；75,000–100,000 个字符时要等 4–6 分钟，而且只读到一部分；参数结构里单个 80,000 字符的字符串完全读不到。所以连接器里的说明（过长时为缩短版）加参数结构超过 64,000 个字符时，插件把完整的参数结构放进提示词，连接器里的参数改为接受任意对象，模型按提示词里的结构填写参数。
+
+显式设置 `parallel_tool_calls=true` 时，连接器里只有一个 `client_tools_batch` 工具，模型在一次真实调用里选择 1–8 个相互独立的函数。插件把它们拆成多个 call_id，由客户端并行执行。一个批次的结果必须在同一个请求里全部提交，顺序可以不同；依赖前一批结果的调用应放进下一批。不用批处理时，Work 有时也会一次发起几个连接器调用，插件按顺序每次只交给客户端一个，前一个的结果交回后再交下一个。
+
+`client_tools_batch` 的参数结构包含所有函数的说明和参数，和普通函数一样受上面的读取上限约束。为了留出余量，批处理结构超过 48,000 个字符时，插件不提供 `client_tools_batch`，改为逐个提供函数，模型一次调用一个，客户端不用做任何改动。2026-10-16 实测 13 个函数、51,200 个字符的批处理结构按此回退后正常完成。
+
+Claude 客户端经 CPA 转换后不会带 `parallel_tool_calls=true`，Gemini 也不会，所以这两类客户端总是逐个调用函数。
+
+多个带函数的请求可以同时进行。Work 把一个设备的连接器调用都从最新打开的工具通道发下来，不管调用属于哪个任务；插件的所有任务共用登录会话里的同一个设备，0.3.5 起会把每个调用转交给它所属的任务。0.3.4 及更早的版本会丢掉不属于本通道的调用：较早开始的任务要等较新的任务结束才拿得到调用，期间 Work 会说“连接器暂时不可用”并退避重试，任务因此慢上几分钟。同理，不要把 `session.json` 复制给另一个实例同时使用，否则两边的调用会发到对方的通道上。
+
+首次请求建议带 `Idempotency-Key`（最多 128 个字符）。同一个 key 配相同的请求会复用原任务，配不同的请求返回 409。工具结果按 call_id 去重，结果冲突时返回 409。
+
+## 错误与重试
+
+- 429 `gateway_capacity`：同时最多运行 4 个任务。容量满时，先挤掉最接近期限、正在等待客户端函数结果的任务；它的客户端之后交回结果时，插件按完整历史开一个新任务继续。如果没有这样的任务，就拒绝新请求。被拒绝的请求没有提交任何内容，可以安全重试。
+- 429 `task_not_started`：Work 没能启动任务，也没有提交任何内容，可以安全重试。
+- 409 `upstream_failed`、504 `task_expired`：生成已经提交过，插件不会自动重发。请先核对私有收据，再决定是否重新请求。
+- 401：通常需要重新扫码。
+
+插件给自己的账号关闭了 CPA 冷却，429 不会让模型被暂停。其他层的重试可能把一个不确定的写请求当成新请求重发，所以建议：SDK 设 `max_retries=0`，CPA 设 `request-retry=0`、`bootstrap-retries=0`、`max-retry-credentials=1`；或者让客户端带上 Idempotency-Key。
+
+## 在 Claude Code 中使用
+
+把 Claude Code 指向 CPA，并设置以下环境变量：
+
+```bash
+export ANTHROPIC_BASE_URL=http://127.0.0.1:8317
+export ANTHROPIC_AUTH_TOKEN=<CPA 的模型 API key>
+export ANTHROPIC_MODEL=doubao-gpt-6.1-sol
+export ANTHROPIC_DEFAULT_HAIKU_MODEL=doubao-2.1-lite
+export CLAUDE_CODE_MAX_CONTEXT_TOKENS=90000
+export CLAUDE_STREAM_IDLE_TIMEOUT_MS=900000
+```
+
+Work 只接收 262,144 个字符，限制上下文能让 Claude Code 及时压缩，不会撞到这个上限。Work 的单次回答可能要几分钟，较长的流式空闲超时可以避免 Claude Code 提前断开。
+
+- 后台小任务的模型用 `ANTHROPIC_DEFAULT_HAIKU_MODEL` 指定，`ANTHROPIC_SMALL_FAST_MODEL` 已弃用。
+- `CLAUDE_CODE_MAX_CONTEXT_TOKENS` 只对不以 `claude-` 开头的模型名生效。不设置时 Claude Code 按 200K 计算，要到远超 Work 上限时才会压缩。
+- `CLAUDE_STREAM_IDLE_TIMEOUT_MS` 最小为 300000，超过 30 分钟的值按 30 分钟算。
+- 万一请求仍然超长，插件返回的 `prompt is too long` 错误也会触发 Claude Code 自动压缩。
 
 ## 图片、文件和工具媒体结果
 
@@ -97,13 +187,9 @@ CPA 正常退出/卸载时保留可恢复的任务绑定。重启后从已确认
 
 取消会验证账户和精确原始 run，写入日志后只发送一次。取消请求受理与服务端实际停止分别核对。不确定的取消不重发。一个 state 目录只能由一个插件实例持有；helper 的文件操作另有进程间锁。
 
-## 流式、usage 和兼容边界
+## 流式输出
 
-无客户端工具的答案会实时发送已识别的可见正文块，过滤思考及其子块、未知隐藏容器，并用最终 IM 回读校验已发送前缀。若上游改写了已发出的正文，会以流错误结束，不能假装能撤回已发文本。客户端工具链在已验证的工具边界和最终回答处输出，暂不增量转发中间 Work 计划或工具参数。
-
-上游没有提供可验证 token 用量。Chat 不返回 usage；固定 CPA 版本转换出的 Responses 可能补零，这些零是兼容占位，不是测量值。响应附 `X-Doubao-Usage: unavailable`，不能据此计费。`stream_options.include_usage=true` 和精确 token 计数会明确拒绝。
-
-只接受 `tool_choice=auto/none`、`n=1`。温度、top_p、max_tokens/max_output_tokens、stop、严格 schema、强制工具选择、reasoning 控制、音视频、原生多模态输出等不在本版支持范围。不承诺完整 Codex/Claude Code 客户端兼容性。
+无客户端工具的答案会实时发送已识别的可见正文块，过滤思考及其子块、未知隐藏容器，并用最终 IM 回读校验已发送前缀。若上游改写了已发出的正文，会以流错误结束，不能假装能撤回已发文本。客户端工具链在已验证的工具边界和最终回答处输出，暂不增量转发中间 Work 计划或工具参数。等待期间流式响应会定期发送 keepalive 注释。
 
 ## 验证与排障
 
@@ -121,4 +207,4 @@ PYTHONDONTWRITEBYTECODE=1 python3 integration/acceptance.py
 PYTHONDONTWRITEBYTECODE=1 python3 integration/extended_acceptance.py
 ```
 
-SDK 仅为测试依赖。报告写进 `$DOUBAO_TEST_DIR/evidence/`，原始请求、账户会话、工具结果和上游日志在 `private/`。对外发送报告时只选 evidence 中已审查的文件；不要打包整个 state 目录。401 通常需要重新扫码，409 先核对本地任务/上传日志，429 先查看容量与待结束任务。安装包、配置和宿主补丁的测试结果见 `docs/VALIDATION_CN.md`。
+SDK 仅为测试依赖。报告写进 `$DOUBAO_TEST_DIR/evidence/`，原始请求、账户会话、工具结果和上游日志在 `private/`。对外发送报告时只选 evidence 中已审查的文件；不要打包整个 state 目录。测试结果见 `docs/VALIDATION_CN.md`。
