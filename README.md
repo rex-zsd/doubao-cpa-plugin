@@ -38,8 +38,6 @@ plugins:
       helper_path: /CLIProxyAPI/plugins/doubao-work/bin/doubao-helper
 ```
 
-Leave `host_http` at its default of false. Only a host patched with `patches/cpa-http-wire.patch` supports it, and the official host silently ignores it.
-
 Log in by QR code with the helper, which can run directly on the host:
 
 ```bash
@@ -73,9 +71,5 @@ Model IDs are slugs of the Work display names, such as `doubao-auto`, `doubao-2.
 - There is no `/v1/files` endpoint and no `previous_response_id`. Use inline data, HTTPS URLs or helper-managed file IDs.
 
 For Claude Code, point `ANTHROPIC_BASE_URL` at CPA and set `ANTHROPIC_DEFAULT_HAIKU_MODEL`, `CLAUDE_CODE_MAX_CONTEXT_TOKENS=90000` and `CLAUDE_STREAM_IDLE_TIMEOUT_MS=900000`. [README_CN.md](README_CN.md) covers these settings, the error codes and the tested limits in detail.
-
-## v0.1.0 packages
-
-The [v0.1.0 Release](https://github.com/rex-zsd/doubao-cpa-plugin/releases/tag/v0.1.0) packages target a patched host pinned to [CLIProxyAPI commit 5fc580b](https://github.com/router-for-me/CLIProxyAPI/tree/5fc580b1d72d87a7bcfe5cfb6f479c1aea5625b3) with [the HTTP bridge patch](patches/cpa-http-wire.patch), and still use the old model names. See [the binary installation guide](docs/BINARY_INSTALL_CN.md). To build that host from source, pass the pinned CPA checkout to `scripts/build.sh` as a second argument.
 
 Account sessions, request receipts and tool results stay in the private state directory. Licensing and source acknowledgments are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

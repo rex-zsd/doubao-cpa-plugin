@@ -20,10 +20,6 @@ func TestOfficialHostUsesNativeTransportByDefault(t *testing.T) {
 	if options := serviceConfig(cfg); options.Transport != nil || options.StateDir != "/state" || options.HelperPath != "/bin/doubao-helper" {
 		t.Fatalf("default config must not depend on the host HTTP bridge: %+v", options)
 	}
-	cfg.HostHTTP = true
-	if _, ok := serviceConfig(cfg).Transport.(hostTransport); !ok {
-		t.Fatal("host_http must select the CPA HTTP bridge")
-	}
 }
 
 func TestExecutorSSEFramingIsOwnedByCPA(t *testing.T) {

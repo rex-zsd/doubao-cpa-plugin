@@ -40,8 +40,6 @@ plugins:
       helper_path: /CLIProxyAPI/plugins/doubao-work/bin/doubao-helper
 ```
 
-`host_http` 保持默认的 false。只有打过 `patches/cpa-http-wire.patch` 的宿主才支持它，官方宿主会静默忽略。
-
 扫码登录用 helper 完成。helper 是静态二进制，可以直接在宿主机上运行，`-dir` 写 state 目录在宿主机上的路径：
 
 ```bash
@@ -55,8 +53,6 @@ plugins:
 升级时，把新版本的 `.so` 复制进同一目录。CPA 配置热重载后会切换到最高版本，在 `config.yaml` 末尾追加一行注释即可触发热重载。确认切换后，把旧版本文件移出插件目录。
 
 管理页面的管理密钥、模型 API key 和豆包登录会话三者用途不同，`missing management key` 的排查见 `docs/AUTH_TROUBLESHOOTING_CN.md`。
-
-[v0.1.0 Release](https://github.com/rex-zsd/doubao-cpa-plugin/releases/tag/v0.1.0) 的安装包面向固定版本的修补宿主，与上面的插件目录方式不同，安装方法见 [二进制安装说明](docs/BINARY_INSTALL_CN.md)。从源码构建修补宿主时，给 `scripts/build.sh` 传第二个参数，即固定 commit `5fc580b1d72d87a7bcfe5cfb6f479c1aea5625b3` 的 CPA checkout。
 
 ## 模型
 

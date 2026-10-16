@@ -22,10 +22,6 @@ type object = map[string]any
 type config struct {
 	StateDir   string `yaml:"state_dir"`
 	HelperPath string `yaml:"helper_path"`
-	// HostHTTP routes upstream traffic through the CPA HTTP bridge. Only a host
-	// built with patches/cpa-http-wire.patch honors the redirect and
-	// public-network wire profile; official hosts silently ignore it.
-	HostHTTP bool `yaml:"host_http"`
 }
 
 var runtime struct {
@@ -140,15 +136,11 @@ func openService() (*doubao.Service, error) {
 	return s, err
 }
 
-// serviceConfig keeps upstream HTTP inside the plugin by default. The native
-// clients already refuse redirects and pin public media downloads, so the
-// official CPA host needs no wire-profile support.
+// serviceConfig keeps upstream HTTP inside the plugin. The native clients
+// refuse redirects and pin public media downloads, so the official CPA host
+// needs no HTTP bridge.
 func serviceConfig(cfg config) doubao.ServiceConfig {
-	options := doubao.ServiceConfig{StateDir: cfg.StateDir, HelperPath: cfg.HelperPath}
-	if cfg.HostHTTP {
-		options.Transport = hostTransport{}
-	}
-	return options
+	return doubao.ServiceConfig{StateDir: cfg.StateDir, HelperPath: cfg.HelperPath}
 }
 func closePlugin() {
 	runtime.Lock()
@@ -227,7 +219,7 @@ func dispatch(method string, raw []byte) (any, error) {
 		changed := runtime.service != nil && runtime.config != cfg
 		runtime.Unlock()
 		if changed {
-			return nil, errors.New("stop active plugin before changing state_dir, helper_path or host_http")
+			return nil, errors.New("stop active plugin before changing state_dir or helper_path")
 		}
 		runtime.Lock()
 		runtime.config = cfg
@@ -236,7 +228,7 @@ func dispatch(method string, raw []byte) (any, error) {
 		}
 		runtime.closed = false
 		runtime.Unlock()
-		return object{"schema_version": 6, "metadata": object{"Name": provider, "Version": "0.3.7", "Author": "rex", "GitHubRepository": "https://github.com/rex-zsd/doubao-cpa-plugin", "ConfigFields": []any{object{"Name": "state_dir", "Type": "string", "Description": "Private account and task state directory"}, object{"Name": "helper_path", "Type": "string", "Description": "Absolute path to doubao-helper"}, object{"Name": "host_http", "Type": "boolean", "Description": "Use the CPA HTTP bridge; requires a host built with patches/cpa-http-wire.patch"}}}, "capabilities": object{"auth_provider": true, "model_provider": true, "executor": true, "executor_model_scope": "oauth", "executor_input_formats": []string{"chat-completions", "openai-response"}, "executor_output_formats": []string{"chat-completions"}}}, nil
+		return object{"schema_version": 6, "metadata": object{"Name": provider, "Version": "0.3.7", "Author": "rex", "GitHubRepository": "https://github.com/rex-zsd/doubao-cpa-plugin", "ConfigFields": []any{object{"Name": "state_dir", "Type": "string", "Description": "Private account and task state directory"}, object{"Name": "helper_path", "Type": "string", "Description": "Absolute path to doubao-helper"}}}, "capabilities": object{"auth_provider": true, "model_provider": true, "executor": true, "executor_model_scope": "oauth", "executor_input_formats": []string{"chat-completions", "openai-response"}, "executor_output_formats": []string{"chat-completions"}}}, nil
 	case "plugin.shutdown", "plugin.quiesce":
 		closePlugin()
 		return object{}, nil
