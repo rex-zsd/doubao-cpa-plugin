@@ -4,7 +4,7 @@
 
 ## 从 GitHub Release 安装
 
-从本仓库的 **Releases** 页面下载以下文件，放到同一个空目录：
+从 [v0.1.0 Release](https://github.com/rex-zsd/doubao-cpa-plugin/releases/tag/v0.1.0) 下载以下文件，放到同一个空目录：
 
 - `doubao-cpa-plugin-0.1.0-linux-amd64.tar.gz`：插件、helper、安装脚本和文档。
 - `cpa-host-doubao-0.1.0-linux-amd64.tar.gz`：修补后的 CPA 宿主。

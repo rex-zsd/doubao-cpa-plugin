@@ -8,7 +8,7 @@
 
 固定宿主版本为 `router-for-me/CLIProxyAPI@5fc580b1d72d87a7bcfe5cfb6f479c1aea5625b3`。必须使用交付的修补宿主，或应用 `patches/cpa-http-wire.patch` 后自行构建。原版宿主缺少所需的重定向控制，不能直接替换使用。
 
-从本仓库 **Releases** 页面下载插件包、修补宿主包及 `SHA256SUMS`。安装方法见 [二进制安装说明](docs/BINARY_INSTALL_CN.md)。当前为实验版 v0.1.0。
+从 [v0.1.0 Release](https://github.com/rex-zsd/doubao-cpa-plugin/releases/tag/v0.1.0) 下载插件包、修补宿主包及 `SHA256SUMS`。安装方法见 [二进制安装说明](docs/BINARY_INSTALL_CN.md)。当前为实验版 v0.1.0。
 
 管理页面的管理密钥、模型 API key 和豆包登录会话用途不同。`missing management key` 的配置与排查见 `docs/AUTH_TROUBLESHOOTING_CN.md`。本版提供扫码登录，尚未提供原始 Cookie 文本的页面导入入口。
 
@@ -36,6 +36,8 @@
 若从源码构建，需要 Go 1.26、CGO、C 编译器，以及固定版本的 CPA checkout：
 
 ```bash
+git clone https://github.com/rex-zsd/doubao-cpa-plugin.git
+cd doubao-cpa-plugin
 git clone https://github.com/router-for-me/CLIProxyAPI.git /absolute/CLIProxyAPI
 git -C /absolute/CLIProxyAPI checkout 5fc580b1d72d87a7bcfe5cfb6f479c1aea5625b3
 ./scripts/build.sh /absolute/build-output /absolute/CLIProxyAPI

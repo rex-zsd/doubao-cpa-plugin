@@ -1,16 +1,18 @@
 # Doubao Work native plugin for CLIProxyAPI
 
-[中文文档](README_CN.md) · [Binary installation](docs/BINARY_INSTALL_CN.md) · [Validation](docs/VALIDATION_CN.md)
+[GitHub](https://github.com/rex-zsd/doubao-cpa-plugin) · [v0.1.0 downloads](https://github.com/rex-zsd/doubao-cpa-plugin/releases/tag/v0.1.0) · [中文文档](README_CN.md) · [Binary installation](docs/BINARY_INSTALL_CN.md) · [Validation](docs/VALIDATION_CN.md)
 
 An independent Go protocol adapter exposed through CLIProxyAPI's native C ABI. No doubao-cli runtime dependency and no extra HTTP gateway process. This experimental v0.1.0 targets a single Doubao Work account on Linux amd64.
 
-Download **both** `doubao-cpa-plugin-0.1.0-linux-amd64.tar.gz` and `cpa-host-doubao-0.1.0-linux-amd64.tar.gz`, plus `SHA256SUMS`, from the repository's **Releases** page. Verify the two archives, extract them into the same directory, and follow [the installation guide](docs/BINARY_INSTALL_CN.md) for QR login and startup. Packages contain no account credentials. The default API is `http://127.0.0.1:18322/v1`; the installer creates a private API key in its `config.yaml`.
+Download **both** `doubao-cpa-plugin-0.1.0-linux-amd64.tar.gz` and `cpa-host-doubao-0.1.0-linux-amd64.tar.gz`, plus `SHA256SUMS`, from the [v0.1.0 Release](https://github.com/rex-zsd/doubao-cpa-plugin/releases/tag/v0.1.0). Verify the two archives, extract them into the same directory, and follow [the installation guide](docs/BINARY_INSTALL_CN.md) for QR login and startup. Packages contain no account credentials. The default API is `http://127.0.0.1:18322/v1`; the installer creates a private API key in its `config.yaml`.
 
 The host is pinned to [CLIProxyAPI commit 5fc580b](https://github.com/router-for-me/CLIProxyAPI/tree/5fc580b1d72d87a7bcfe5cfb6f479c1aea5625b3) and requires [the supplied HTTP bridge patch](patches/cpa-http-wire.patch). Use the bundled patched host or rebuild the pinned source. The patch controls redirects and pins media downloads to validated public IPs, including through proxies.
 
 Build with Go 1.26, CGO and a C compiler:
 
 ```bash
+git clone https://github.com/rex-zsd/doubao-cpa-plugin.git
+cd doubao-cpa-plugin
 git clone https://github.com/router-for-me/CLIProxyAPI.git /absolute/CLIProxyAPI
 git -C /absolute/CLIProxyAPI checkout 5fc580b1d72d87a7bcfe5cfb6f479c1aea5625b3
 ./scripts/build.sh /absolute/output /absolute/CLIProxyAPI
