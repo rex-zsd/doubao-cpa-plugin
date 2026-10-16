@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "native_plugin": true,
+  "targeted_stop_accepted": true,
+  "cancellation_confirmed": true,
+  "late_result_rejected": true,
+  "primary_generation_posts": 1
+}

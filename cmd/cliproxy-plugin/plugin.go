@@ -1,0 +1,272 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"path/filepath"
+	"sync"
+	"time"
+
+	"doubao-cpa-plugin/internal/doubao"
+	"gopkg.in/yaml.v3"
+)
+
+const provider = "doubao-work"
+
+type object = map[string]any
+type config struct {
+	StateDir   string `yaml:"state_dir"`
+	HelperPath string `yaml:"helper_path"`
+}
+
+var runtime struct {
+	sync.Mutex
+	config  config
+	service *doubao.Service
+	closed  bool
+	ctx     context.Context
+	cancel  context.CancelFunc
+	streams sync.WaitGroup
+	login   *loginFlow
+}
+
+func failure(code, message string, status int) []byte {
+	b, _ := json.Marshal(object{"ok": false, "error": object{"code": code, "message": message, "http_status": status, "retryable": false}})
+	return b
+}
+func failureFrom(err error) []byte {
+	status := 500
+	var coded interface{ StatusCode() int }
+	if errors.As(err, &coded) {
+		status = coded.StatusCode()
+	}
+	return failure("doubao_error", err.Error(), status)
+}
+
+type request struct {
+	AuthID, AuthProvider, Provider, Model, Format, SourceFormat, State string
+	Path, FileName                                                     string
+	Payload, OriginalRequest, StorageJSON, RawJSON                     []byte
+	Headers                                                            http.Header
+	Stream                                                             bool
+	StreamID                                                           string `json:"stream_id"`
+	CallbackID                                                         string `json:"host_callback_id"`
+}
+
+func openService() (*doubao.Service, error) {
+	runtime.Lock()
+	defer runtime.Unlock()
+	if runtime.closed {
+		return nil, errors.New("plugin is shutting down")
+	}
+	if runtime.service != nil {
+		return runtime.service, nil
+	}
+	if runtime.login != nil {
+		select {
+		case <-runtime.login.done:
+		default:
+			return nil, &statusError{401, "Complete the current QR login before loading models"}
+		}
+	}
+	s, err := doubao.OpenService(context.Background(), doubao.ServiceConfig{StateDir: runtime.config.StateDir, HelperPath: runtime.config.HelperPath, Transport: hostTransport{}})
+	if err == nil {
+		runtime.service = s
+	}
+	return s, err
+}
+func closePlugin() {
+	runtime.Lock()
+	runtime.closed = true
+	s := runtime.service
+	login := runtime.login
+	if runtime.cancel != nil {
+		runtime.cancel()
+	}
+	runtime.service = nil
+	runtime.Unlock()
+	if login != nil {
+		login.cancel()
+		<-login.done
+	}
+	if s != nil {
+		s.Close()
+	}
+	runtime.streams.Wait()
+}
+func authRecord(id string) object {
+	storage := []byte(`{"type":"doubao-work","version":1}`)
+	return object{"Provider": provider, "ID": id, "FileName": "doubao-work.json", "Label": "Doubao Work", "StorageJSON": storage, "Metadata": object{"type": provider}, "Attributes": map[string]string{}}
+}
+func dispatch(method string, raw []byte) (any, error) {
+	var req request
+	if len(raw) > 0 && json.Unmarshal(raw, &req) != nil {
+		return nil, fmt.Errorf("invalid plugin request")
+	}
+	switch method {
+	case "plugin.register", "plugin.reconfigure":
+		var incoming struct {
+			Config []byte `json:"config_yaml"`
+		}
+		if err := json.Unmarshal(raw, &incoming); err != nil {
+			return nil, err
+		}
+		var cfg config
+		if err := yaml.Unmarshal(incoming.Config, &cfg); err != nil {
+			return nil, errors.New("invalid plugin YAML")
+		}
+		if !filepath.IsAbs(cfg.StateDir) || !filepath.IsAbs(cfg.HelperPath) {
+			return nil, errors.New("configure absolute state_dir and helper_path")
+		}
+		runtime.Lock()
+		changed := runtime.service != nil && runtime.config != cfg
+		runtime.Unlock()
+		if changed {
+			return nil, errors.New("stop active plugin before changing state_dir or helper_path")
+		}
+		runtime.Lock()
+		runtime.config = cfg
+		if runtime.ctx == nil || runtime.closed {
+			runtime.ctx, runtime.cancel = context.WithCancel(context.Background())
+		}
+		runtime.closed = false
+		runtime.Unlock()
+		return object{"schema_version": 6, "metadata": object{"Name": provider, "Version": "0.1.0", "Author": "rex", "GitHubRepository": "local://doubao-cpa-plugin", "ConfigFields": []any{object{"Name": "state_dir", "Type": "string", "Description": "Private account and task state directory"}, object{"Name": "helper_path", "Type": "string", "Description": "Absolute path to doubao-helper"}}}, "capabilities": object{"auth_provider": true, "model_provider": true, "executor": true, "executor_model_scope": "oauth", "executor_input_formats": []string{"chat-completions", "openai-response"}, "executor_output_formats": []string{"chat-completions"}}}, nil
+	case "plugin.shutdown", "plugin.quiesce":
+		closePlugin()
+		return object{}, nil
+	case "auth.identifier", "executor.identifier":
+		return object{"identifier": provider}, nil
+	case "auth.parse":
+		var data object
+		if json.Unmarshal(req.RawJSON, &data) != nil || data["type"] != provider {
+			return object{"Handled": false}, nil
+		}
+		return object{"Handled": true, "Auth": authRecord(req.FileName)}, nil
+	case "auth.login.start":
+		return startLogin()
+	case "auth.login.poll":
+		return pollLogin(req.State)
+	case "auth.refresh":
+		s, err := openService()
+		if err != nil {
+			return nil, err
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err = s.Validate(ctx); err != nil {
+			return nil, &statusError{401, "Doubao login expired; sign in again"}
+		}
+		return object{"Auth": authRecord(req.AuthID), "NextRefreshAfter": time.Now().Add(30 * time.Minute)}, nil
+	case "model.static":
+		return object{"Provider": provider, "Models": []any{}}, nil
+	case "model.for_auth":
+		if req.AuthProvider != "" && req.AuthProvider != provider {
+			return object{"Provider": provider, "Models": []any{}}, nil
+		}
+		s, err := openService()
+		if err != nil {
+			return nil, err
+		}
+		models := []any{}
+		for _, m := range s.Models {
+			models = append(models, object{"ID": m.ID, "Object": "model", "OwnedBy": provider, "Type": provider, "DisplayName": m.DisplayName, "Name": m.ID, "SupportedInputModalities": []string{"text", "image", "file"}, "SupportedOutputModalities": []string{"text"}, "SupportedParameters": []string{"tools", "tool_choice", "parallel_tool_calls"}})
+		}
+		return object{"Provider": provider, "Models": models}, nil
+	case "executor.execute", "executor.execute_stream":
+		if req.AuthProvider != provider {
+			return nil, errors.New("credential belongs to a different provider")
+		}
+		s, err := openService()
+		if err != nil {
+			return nil, err
+		}
+		payload := req.Payload
+		if req.SourceFormat == "openai-response" {
+			payload, err = doubao.NormalizeResponses(payload)
+			if err != nil {
+				return nil, err
+			}
+		}
+		response, err := s.Submit(context.Background(), payload, req.Headers.Get("Idempotency-Key"))
+		if err != nil {
+			return nil, err
+		}
+		runtime.Lock()
+		if runtime.closed {
+			runtime.Unlock()
+			return nil, &statusError{503, "Plugin is shutting down"}
+		}
+		streamCtx := runtime.ctx
+		runtime.streams.Add(1)
+		runtime.Unlock()
+		if method == "executor.execute" {
+			defer runtime.streams.Done()
+			body, err := response.Complete(streamCtx)
+			if err != nil {
+				return nil, err
+			}
+			return object{"Payload": body, "Headers": http.Header{"Content-Type": {"application/json"}, "X-Doubao-Usage": {"unavailable"}}}, nil
+		}
+		if req.StreamID == "" {
+			runtime.streams.Done()
+			return nil, errors.New("missing host stream identity")
+		}
+		go func() {
+			defer runtime.streams.Done()
+			err := response.Stream(streamCtx, func(data []byte) error {
+				frame, err := executorFrame(data)
+				if err != nil {
+					return err
+				}
+				if len(frame) == 0 {
+					return nil
+				}
+				return hostCall("host.stream.emit", object{"stream_id": req.StreamID, "payload": frame}, nil)
+			})
+			close := object{"stream_id": req.StreamID}
+			if err != nil {
+				close["error"] = "Doubao stream interrupted"
+			}
+			_ = hostCall("host.stream.close", close, nil)
+		}()
+		return object{"headers": http.Header{"Content-Type": {"text/event-stream"}, "X-Doubao-Usage": {"unavailable"}}}, nil
+	case "executor.count_tokens":
+		return nil, &statusError{400, "Exact token counting is unavailable for Doubao Work"}
+	case "executor.http_request":
+		return nil, &statusError{400, "Use the supported model execution interfaces"}
+	default:
+		return nil, fmt.Errorf("unsupported plugin method: %s", method)
+	}
+}
+
+type statusError struct {
+	status  int
+	message string
+}
+
+func (e *statusError) Error() string   { return e.message }
+func (e *statusError) StatusCode() int { return e.status }
+
+// CPA adds the public SSE envelope. Its Responses translator also accepts raw
+// JSON chunks and generates its own terminal event on stream close.
+func executorFrame(data []byte) ([]byte, error) {
+	frame := bytes.TrimSpace(data)
+	if bytes.HasPrefix(frame, []byte(":")) {
+		return nil, nil
+	}
+	if bytes.HasPrefix(frame, []byte("data:")) {
+		frame = bytes.TrimSpace(frame[5:])
+	}
+	if bytes.Equal(frame, []byte("[DONE]")) {
+		return nil, nil
+	}
+	if !json.Valid(frame) {
+		return nil, errors.New("invalid executor JSON frame")
+	}
+	return frame, nil
+}

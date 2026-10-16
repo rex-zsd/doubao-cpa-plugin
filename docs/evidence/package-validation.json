@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "archive_hashes_match": true,
+  "all_archives_checked_for_session_values": true,
+  "install_script_success": true,
+  "installed_binaries_match_tested_build": true,
+  "private_file_permissions_verified": true,
+  "installed_host_plugin_and_generated_config_verified": true
+}

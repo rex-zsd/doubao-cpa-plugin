@@ -1,0 +1,77 @@
+{
+  "success": true,
+  "upstream_generations": 0,
+  "count": 10,
+  "api_models": [
+    {
+      "id": "doubao-work-pro",
+      "created": null,
+      "object": "model",
+      "owned_by": "doubao-work",
+      "shutdown_date": null
+    },
+    {
+      "id": "doubao-work-1946880770",
+      "created": null,
+      "object": "model",
+      "owned_by": "doubao-work",
+      "shutdown_date": null
+    },
+    {
+      "id": "doubao-work-1964544258",
+      "created": null,
+      "object": "model",
+      "owned_by": "doubao-work",
+      "shutdown_date": null
+    },
+    {
+      "id": "doubao-work-2123520258",
+      "created": null,
+      "object": "model",
+      "owned_by": "doubao-work",
+      "shutdown_date": null
+    },
+    {
+      "id": "doubao-work-4",
+      "created": null,
+      "object": "model",
+      "owned_by": "doubao-work",
+      "shutdown_date": null
+    },
+    {
+      "id": "doubao-work-5",
+      "created": null,
+      "object": "model",
+      "owned_by": "doubao-work",
+      "shutdown_date": null
+    },
+    {
+      "id": "doubao-work-5262373378",
+      "created": null,
+      "object": "model",
+      "owned_by": "doubao-work",
+      "shutdown_date": null
+    },
+    {
+      "id": "doubao-work-seed-lite-7b",
+      "created": null,
+      "object": "model",
+      "owned_by": "doubao-work",
+      "shutdown_date": null
+    },
+    {
+      "id": "doubao-work-5255447810",
+      "created": null,
+      "object": "model",
+      "owned_by": "doubao-work",
+      "shutdown_date": null
+    },
+    {
+      "id": "doubao-work-9",
+      "created": null,
+      "object": "model",
+      "owned_by": "doubao-work",
+      "shutdown_date": null
+    }
+  ]
+}

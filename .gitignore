@@ -1,0 +1,8 @@
+/build/
+/dist/
+/private/
+*.so
+*.dylib
+*.dll
+*.h
+__pycache__/

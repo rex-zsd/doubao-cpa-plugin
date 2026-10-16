@@ -1,0 +1,112 @@
+{
+  "success": true,
+  "native_plugin": true,
+  "reference_library_used": false,
+  "tested_host_revision": "5fc580b1d72d87a7bcfe5cfb6f479c1aea5625b3",
+  "cases": [
+    {
+      "case": "stream_chat",
+      "success": true,
+      "text_delta_count": 329,
+      "first_text_ms": 9823,
+      "completion_ms": 18525,
+      "final_sha256": "333b70cf38f290486b83ce8f17069c740fd9c4e74fb865e24877b26a2ce283ed"
+    },
+    {
+      "case": "stream_responses",
+      "success": true,
+      "text_delta_count": 337,
+      "first_text_ms": 12833,
+      "completion_ms": 21299,
+      "final_sha256": "c40a89032064f3fa3d3ec3dda960cf8339a81662005cc2e36e51046f4d02d2e9"
+    },
+    {
+      "case": "file_id",
+      "success": true,
+      "exact_image_pdf_match": true
+    },
+    {
+      "case": "responses_media",
+      "success": true,
+      "image_and_pdf_exact_match": true,
+      "hidden_answer_not_in_prompt": true
+    },
+    {
+      "case": "file_url",
+      "success": true,
+      "exact_fetched_nonce": true,
+      "source_not_in_native_prompt": true
+    },
+    {
+      "case": "tool_media_chat",
+      "success": true,
+      "real_function_called": true,
+      "image_pdf_from_tool_exact_match": true,
+      "hidden_values_absent_from_original_prompt": true
+    },
+    {
+      "case": "tool_media_responses",
+      "success": true,
+      "real_function_called": true,
+      "image_pdf_from_tool_exact_match": true,
+      "hidden_values_absent_from_original_prompt": true
+    },
+    {
+      "case": "responses_batch_restart",
+      "success": true,
+      "tool_calls_in_one_response": 3,
+      "caller_execution_overlapped": true,
+      "execution_ms": 1501,
+      "sum_of_serial_delays_ms": 2400,
+      "returned_result_order": [
+        "lookup_beta",
+        "lookup_gamma",
+        "lookup_alpha"
+      ],
+      "timeline": [
+        {
+          "name": "lookup_beta",
+          "start_ms": 1,
+          "end_ms": 201
+        },
+        {
+          "name": "lookup_gamma",
+          "start_ms": 1,
+          "end_ms": 701
+        },
+        {
+          "name": "lookup_alpha",
+          "start_ms": 1,
+          "end_ms": 1501
+        }
+      ],
+      "values_generated_after_real_model_calls": true,
+      "stable_call_ids_after_restart": true,
+      "final_exact_match": true,
+      "result_replay_same_answer": true,
+      "final_sha256": "2a66b5b49f622d766f1315f71c80bc9c9e2ef0fd1f4493614b7e4f925f6d7416"
+    }
+  ],
+  "unit_tests": {
+    "success": true,
+    "race_enabled": true,
+    "passed_test_cases_including_subtests": 45,
+    "skipped_live_diagnostic": 1
+  },
+  "cancellation": {
+    "success": true,
+    "native_plugin": true,
+    "targeted_stop_accepted": true,
+    "cancellation_confirmed": true,
+    "late_result_rejected": true,
+    "primary_generation_posts": 1
+  },
+  "limitations": [
+    "Single account, full history, Linux amd64.",
+    "Tool media uses one additional journaled media-reading generation per media result; observations are textual and may omit visual detail.",
+    "Interleaved Work plans and tool arguments are buffered at verified boundaries.",
+    "No /v1/files HTTP endpoint; use inline data, HTTPS URL, or helper file_id registry.",
+    "Responses zero usage counters are CPA compatibility placeholders, not upstream measurements.",
+    "Fresh QR scan not repeated in this round; current authorized account was reused."
+  ]
+}

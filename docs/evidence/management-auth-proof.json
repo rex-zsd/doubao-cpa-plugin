@@ -1,0 +1,37 @@
+{
+  "success": true,
+  "real_host_binary": true,
+  "upstream_requests": 0,
+  "cases": [
+    {
+      "case": "no_auth",
+      "status": 401,
+      "error": "missing management key",
+      "passed": true
+    },
+    {
+      "case": "cookie_only",
+      "status": 401,
+      "error": "missing management key",
+      "passed": true
+    },
+    {
+      "case": "model_api_key",
+      "status": 401,
+      "error": "invalid management key",
+      "passed": true
+    },
+    {
+      "case": "management_header",
+      "status": 200,
+      "error": null,
+      "passed": true
+    },
+    {
+      "case": "management_bearer",
+      "status": 200,
+      "error": null,
+      "passed": true
+    }
+  ]
+}
