@@ -68,7 +68,7 @@ func (g *gateway) forwardClientBatch(ctx context.Context, t *gatewayTurn, native
 		return nil, err
 	}
 	g.mu.Lock()
-	if t.forwarded+len(calls) > 32 {
+	if t.forwarded+len(calls) > maxForwarded {
 		g.mu.Unlock()
 		return nil, errors.New("tool chain exceeded 32 client calls")
 	}
@@ -79,6 +79,7 @@ func (g *gateway) forwardClientBatch(ctx context.Context, t *gatewayTurn, native
 		g.calls[call.ID] = p
 	}
 	t.forwarded += len(calls)
+	g.renewLocked(t)
 	if err := g.checkpointLocked(t); err != nil {
 		for _, call := range calls {
 			delete(g.calls, call.ID)

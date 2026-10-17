@@ -210,8 +210,8 @@ func connectorIDs(items []any) []string {
 	return ids
 }
 
-func localToolBody(prompt string, model Model, workspace, sandbox, device, connector string, tools []any) object {
-	body := buildBody(prompt, "", "work", model)
+func localToolBody(prompt, conversation string, model Model, workspace, sandbox, device, connector string, tools []any) object {
+	body := buildBody(prompt, conversation, "work", model)
 	gt := field(body, "option", "general_task_param").(map[string]any)
 	gt["runtime_type"] = 2
 	agent := object{"runtime_type": 2, "sandbox_auth_type": 2, "local_device_id": device, "workspace": workspace, "device_name": "independent-probe", "folder_name": filepath.Base(workspace), "local_app_id": "1044603"}
@@ -219,7 +219,9 @@ func localToolBody(prompt string, model Model, workspace, sandbox, device, conne
 	gt["client_option"] = object{"enable_sandbox": true, "os": "Linux", "shared_folder_path": []string{workspace}, "agent_workspace": object{"agent_workspace": workspace, "local_skill_paths": []any{}}, "client_env_id": "", "sandbox_id": sandbox, "workspace": workspace, "sandbox_auth_type": 2}
 	gt["task_input_json"] = jsonText(object{"agents_md": object{"files": []any{}, "state": 2}, "schema_version": 1, "home_dir": workspace, "project_context": object{}, "localConnectors": []any{object{"connectorId": connector, "mcpToolsList": tools}}})
 	field(body, "ext").(map[string]any)["general_task_param"] = jsonText(gt)
-	field(body, "option", "conversation_init_ext").(map[string]any)["agent_task_param"] = jsonText(agent)
+	if init, ok := field(body, "option", "conversation_init_ext").(map[string]any); ok {
+		init["agent_task_param"] = jsonText(agent)
+	}
 	return body
 }
 
@@ -556,7 +558,7 @@ func (c *Client) probeTools(ctx context.Context, model Model, private, public st
 	}
 	p := &toolProbe{c: c, sandbox: "nonce-" + runToken, workspace: workspace, connector: connector, challenge: "challenge_" + token()[:16], journal: filepath.Join(private, "tool-journal-"+runToken+".json"), events: map[string]int{}, records: map[string]object{}, proofs: []object{}}
 	prompt := "这是自定义工具协议验证。请调用已接入的 MCP 连接器 " + connector + " 中的 get_nonce 工具，唯一参数 challenge 为 " + p.challenge + "。nonce 仅在工具执行时产生，你无法提前知道。收到工具结果后，最终回答只原样输出结果中的 nonce 字段，不要输出 challenge、JSON、代码块或解释。不要调用 Bash、Read、Write 等本地工具。"
-	body := localToolBody(prompt, model, workspace, p.sandbox, c.session.DeviceID, connector, wireTools)
+	body := localToolBody(prompt, "", model, workspace, p.sandbox, c.session.DeviceID, connector, wireTools)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	wrote := make(chan struct{})

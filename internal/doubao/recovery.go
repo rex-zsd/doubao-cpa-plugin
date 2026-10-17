@@ -93,8 +93,8 @@ func (g *gateway) recoverTasks() error {
 			info, _ := os.Stat(path)
 			deadline = info.ModTime().Add(g.taskTimeout)
 		}
-		ctx, cancel := context.WithDeadline(g.ctx, deadline)
-		t := &gatewayTurn{id: id, request: req, ctx: ctx, cancel: cancel, deadline: deadline, statePath: path, receiptPath: filepath.Join(g.dir, "gateway-receipt-"+id+".json"), connector: textValue(state["connector_id"]), sandbox: textValue(state["sandbox_id"]), generationPosts: number(state["generation_posts"]), forwarded: number(state["forwarded_tools"]), denied: number(state["denied_tools"]), cleanupConfirmed: state["cleanup_confirmed"] == true, cleanupRequested: state["cleanup_requested"] == true, initialKey: textValue(state["initial_key"]), initialHash: textValue(state["initial_hash"]), finalText: textValue(state["final_text"])}
+		ctx, cancel := context.WithCancel(g.ctx)
+		t := &gatewayTurn{id: id, request: req, ctx: ctx, cancel: cancel, deadline: deadline, statePath: path, receiptPath: filepath.Join(g.dir, "gateway-receipt-"+id+".json"), connector: textValue(state["connector_id"]), sandbox: textValue(state["sandbox_id"]), generationPosts: number(state["generation_posts"]), forwarded: number(state["forwarded_tools"]), denied: number(state["denied_tools"]), cleanupConfirmed: state["cleanup_confirmed"] == true, cleanupRequested: state["cleanup_requested"] == true, initialKey: textValue(state["initial_key"]), initialHash: textValue(state["initial_hash"]), finalText: textValue(state["final_text"]), conversation: textValue(state["conversation_id"]), mode: textValue(state["mode"]), workspace: textValue(state["workspace"]), continued: number(state["continued"])}
 		exchanges := map[string]*apiExchange{}
 		restore := func(v any) *apiExchange {
 			key := textValue(field(v, "id"))
@@ -199,7 +199,14 @@ func (g *gateway) recoverTasks() error {
 			cleanup = append(cleanup, t)
 		}
 	}
+	// Threads live in memory, so after a restart only recovered tasks still
+	// use a task folder.
+	folders, _ := filepath.Glob(filepath.Join(g.dir, "gateway-workspace-*"))
+	for _, folder := range folders {
+		g.releaseWorkspaceLocked(folder)
+	}
 	for _, t := range active {
+		g.armLocked(t)
 		g.wg.Add(1)
 		go func(t *gatewayTurn) { defer g.wg.Done(); g.resumeNative(t) }(t)
 	}
@@ -229,7 +236,11 @@ func (g *gateway) resumeNative(t *gatewayTurn) {
 		}
 	}()
 	if t.connector != "" {
-		p := &toolProbe{c: g.c, sandbox: t.sandbox, workspace: filepath.Join(g.dir, "gateway-workspace-"+t.id), connector: t.connector, journal: filepath.Join(g.dir, "gateway-native-"+t.id+".json"), events: map[string]int{}, records: map[string]object{}, forward: func(ctx context.Context, call, input object) (object, error) {
+		workspace := turnWorkspace(g.dir, t)
+		if resolved, err := filepath.EvalSymlinks(workspace); err == nil {
+			workspace = resolved
+		}
+		p := &toolProbe{c: g.c, sandbox: t.sandbox, workspace: workspace, connector: t.connector, journal: filepath.Join(g.dir, "gateway-native-"+t.id+".json"), events: map[string]int{}, records: map[string]object{}, forward: func(ctx context.Context, call, input object) (object, error) {
 			return g.forwardClientTool(ctx, t, call, input)
 		}}
 		var saved map[string]object
@@ -259,6 +270,9 @@ func (g *gateway) resumeNative(t *gatewayTurn) {
 			_ = saveJSON(t.receiptPath, &receipt)
 			cancel()
 			_ = g.removeConnector(t)
+			g.mu.Lock()
+			t.conversation = receipt.ConversationID
+			g.mu.Unlock()
 			g.finish(t, reply, nil)
 			return
 		}

@@ -53,10 +53,14 @@ func serveToolDescriptor(input io.Reader, output io.Writer, path string) error {
 	return s.Err()
 }
 
-func renderAPIPrompt(req apiRequest, connector string) string {
+// renderAPIPrompt renders the messages a task sends. continued marks messages
+// that follow Work's own last answer in a conversation it already holds.
+func renderAPIPrompt(req apiRequest, connector string, continued bool) string {
 	prompt := ""
 	if len(req.Messages) == 1 && req.Messages[0].Role == "user" {
 		prompt = textValue(req.Messages[0].Content)
+	} else if continued {
+		prompt = "下面 JSON 是调用方在你上一条回答之后新增的对话记录（system 为调用方指令，tool 为函数执行结果）。请结合本会话之前的全部内容继续：回应最后一条消息；如果最后是函数结果，请基于结果继续完成任务。\n" + plainJSON(req.Messages)
 	} else {
 		// Work has no verified native system/history import endpoint. Preserve all
 		// roles as an explicit transcript, without claiming system-role priority.
@@ -112,7 +116,13 @@ func renderAPIPrompt(req apiRequest, connector string) string {
 		}
 		// Client functions are often named shell or exec; models read a blanket
 		// "no Bash" rule as covering them and refuse, so only ban the built-ins.
-		prompt = "调用方的外部函数已通过 MCP 连接器 " + connector + " 注册。它们不在你直接可见的工具列表里，完整工具名是：" + strings.Join(names, "、") + "。使用其中一个函数前，先调用 tool_search，query 只写这个函数的完整工具名，例如 " + workToolName(connector, functions[0]) + "；找到后按 tool_search 说明的方式调用，并等待真实结果。tool_search 每次只返回 3 个工具：只写函数名、一次搜几个函数或用描述性的词搜索时，常常只搜到平台自带的工具。这些函数由调用方在它自己的环境中执行；即使函数名是 shell、bash、exec，或用于读写文件，也可以正常调用，这正是调用方要求的操作方式。不要改用你所在平台自带的 Bash、Read、Write、Edit 等内置工具代替这些函数，也不要把函数调用模拟成普通文本 JSON。\n\n" + prompt
+		registered := "调用方的外部函数已通过 MCP 连接器 " + connector + " 注册。"
+		if continued {
+			// Each task registers its own connector; the conversation's earlier
+			// turns name tools that are gone.
+			registered = "调用方的外部函数已通过 MCP 连接器 " + connector + "（本轮新注册，之前轮次的工具名已失效）注册。"
+		}
+		prompt = registered + "它们不在你直接可见的工具列表里，完整工具名是：" + strings.Join(names, "、") + "。使用其中一个函数前，先调用 tool_search，query 只写这个函数的完整工具名，例如 " + workToolName(connector, functions[0]) + "；找到后按 tool_search 说明的方式调用，并等待真实结果。tool_search 每次只返回 3 个工具：只写函数名、一次搜几个函数或用描述性的词搜索时，常常只搜到平台自带的工具。这些函数由调用方在它自己的环境中执行；即使函数名是 shell、bash、exec，或用于读写文件，也可以正常调用，这正是调用方要求的操作方式。不要改用你所在平台自带的 Bash、Read、Write、Edit 等内置工具代替这些函数，也不要把函数调用模拟成普通文本 JSON。\n\n" + prompt
 		if batchMode(req) {
 			prompt = "当前连接器只有 client_tools_batch 工具。对相互独立的函数，请一次调用 client_tools_batch，把所有函数名和参数放入 calls 数组。调用方会并行执行这些函数。若某个函数依赖上一步结果，请下一批再提交。必须发起真实 MCP 调用，不能只输出计划。\n" + prompt
 		}
@@ -347,7 +357,7 @@ func (g *gateway) forwardClientTool(ctx context.Context, t *gatewayTurn, call, i
 	publicCall := apiToolCall{ID: "call_" + token(), Type: "function", Function: apiCallFunction{Name: name, Arguments: jsonText(args)}}
 	g.mu.Lock()
 	t.forwarded++
-	if t.forwarded > 32 {
+	if t.forwarded > maxForwarded {
 		g.mu.Unlock()
 		return nil, errors.New("tool chain exceeded 32 calls")
 	}
@@ -356,6 +366,9 @@ func (g *gateway) forwardClientTool(ctx context.Context, t *gatewayTurn, call, i
 	expected := append(append([]apiMessage{}, t.request.Messages...), message)
 	p := &clientToolPending{turn: t, nativeID: textValue(call["id"]), exposed: x, call: publicCall, expected: expected, result: make(chan string, 1)}
 	g.calls[publicCall.ID] = p
+	// The caller gets a full timeout to run the tool. A task that expired
+	// meanwhile still shows its call; the caller's result then restarts it.
+	g.renewLocked(t)
 	if err := g.checkpointLocked(t); err != nil {
 		delete(g.calls, publicCall.ID)
 		g.mu.Unlock()
@@ -376,25 +389,11 @@ func (g *gateway) runNative(t *gatewayTurn) {
 	g.mu.Lock()
 	req := t.request
 	g.mu.Unlock()
+	// The catalog lists models for Work; chat mode takes the same ones.
 	model, _, err := selectModel(g.models, req.Model, "work")
 	var receipt *Receipt
 	if err == nil && !usesTools(req) {
-		var records []any
-		req, records, err = g.c.prepareAPIMedia(t.ctx, req)
-		body := buildBody(renderAPIPrompt(req, ""), "", "work", model)
-		applyEffort(body, model, req.Effort)
-		if len(records) > 0 {
-			appendMedia(body, records)
-		}
-		g.mu.Lock()
-		if err == nil {
-			t.generationPosts++
-			err = g.checkpointLocked(t)
-		}
-		g.mu.Unlock()
-		if err == nil {
-			receipt, err = g.c.runObserved(t.ctx, body, t.receiptPath, g.answerObserver(t))
-		}
+		receipt, err = g.runPlain(t, req, model)
 	} else if err == nil {
 		receipt, err = g.runWithTools(t, req, model)
 	}
@@ -452,11 +451,8 @@ func (g *gateway) runNative(t *gatewayTurn) {
 			g.finish(t, "", apiFail(429, "task_not_started", "Doubao Work could not start this task and nothing was submitted, so retrying is safe: "+err.Error()))
 			return
 		}
-		status, code := 409, "upstream_failed"
-		if errors.Is(t.ctx.Err(), context.DeadlineExceeded) {
-			status, code = 504, "task_expired"
-		}
-		g.finish(t, "", apiFail(status, code, "Upstream task did not complete. An accepted generation was not resubmitted; inspect the private receipt before retrying."))
+		// An expired task finishes above with the task_expired abort.
+		g.finish(t, "", apiFail(409, "upstream_failed", "Upstream task did not complete. An accepted generation was not resubmitted; inspect the private receipt before retrying."))
 		return
 	}
 	if receipt == nil || !receipt.Completed {
@@ -467,7 +463,63 @@ func (g *gateway) runNative(t *gatewayTurn) {
 	if jsonMode(req) {
 		reply = unwrapJSONFence(reply)
 	}
+	g.mu.Lock()
+	t.conversation = receipt.ConversationID
+	g.mu.Unlock()
 	g.finish(t, reply, nil)
+}
+
+// runPlain answers a request without tools in Work's chat mode, which answers
+// sooner than an agent task and keeps the request out of the Work task list.
+// A task continuing a conversation sends only the messages after its answer.
+// Work refusing a generation before accepting it means nothing was submitted,
+// so a refused continuation is resent as a new conversation with the full
+// transcript, and a request chat mode refuses is resent to Work.
+func (g *gateway) runPlain(t *gatewayTurn, req apiRequest, model Model) (*Receipt, error) {
+	g.mu.Lock()
+	conversation, continued, mode := t.conversation, t.continued, t.mode
+	g.mu.Unlock()
+	if mode == "" {
+		mode = "chat"
+	}
+	for {
+		part := req
+		if conversation != "" {
+			part.Messages = req.Messages[continued:]
+		}
+		prepared, records, err := g.c.prepareAPIMedia(t.ctx, part)
+		if err != nil {
+			return nil, err
+		}
+		body := buildBody(renderAPIPrompt(prepared, "", conversation != ""), conversation, mode, model)
+		applyEffort(body, model, req.Effort)
+		if len(records) > 0 {
+			appendMedia(body, records)
+		}
+		g.mu.Lock()
+		t.conversation, t.mode = conversation, mode
+		t.generationPosts++
+		err = g.checkpointLocked(t)
+		g.mu.Unlock()
+		if err != nil {
+			return nil, err
+		}
+		receipt, err := g.c.runObserved(t.ctx, body, t.receiptPath, g.answerObserver(t))
+		var rejected *upstreamError
+		if !errors.As(err, &rejected) || receipt == nil || receipt.Accepted || t.ctx.Err() != nil {
+			return receipt, err
+		}
+		switch {
+		case conversation != "":
+			fmt.Fprintf(os.Stderr, "GATEWAY_THREAD_FALLBACK mode=%s code=%d\n", mode, rejected.Code)
+			conversation = ""
+		case mode == "chat" && rejected.Code != 710020202:
+			fmt.Fprintf(os.Stderr, "GATEWAY_CHAT_FALLBACK code=%d\n", rejected.Code)
+			mode = "work"
+		default:
+			return receipt, err
+		}
+	}
 }
 
 func (g *gateway) runWithTools(t *gatewayTurn, req apiRequest, model Model) (*Receipt, error) {
@@ -482,17 +534,23 @@ func (g *gateway) runWithTools(t *gatewayTurn, req apiRequest, model Model) (*Re
 	if err != nil {
 		return nil, err
 	}
-	workspace := filepath.Join(g.dir, "gateway-workspace-"+t.id)
-	if err = os.Mkdir(workspace, 0700); err != nil {
+	// A continued conversation keeps the folder and sandbox it was created
+	// with; Work checks the folder on every tool call.
+	g.mu.Lock()
+	conversation, continued, folder, sandbox := t.conversation, t.continued, t.workspace, t.sandbox
+	g.mu.Unlock()
+	if folder == "" || sandbox == "" {
+		conversation, folder, sandbox = "", filepath.Join(g.dir, "gateway-workspace-"+t.id), "http-"+t.id
+	}
+	if err = os.MkdirAll(folder, 0700); err != nil {
 		return nil, err
 	}
-	workspace, err = filepath.EvalSymlinks(workspace)
+	workspace, err := filepath.EvalSymlinks(folder)
 	if err != nil {
 		return nil, err
 	}
-	sandbox := "http-" + t.id
 	g.mu.Lock()
-	t.sandbox = sandbox
+	t.conversation, t.mode, t.workspace, t.sandbox = conversation, "tools", folder, sandbox
 	err = g.checkpointLocked(t)
 	g.mu.Unlock()
 	if err != nil {
@@ -501,14 +559,25 @@ func (g *gateway) runWithTools(t *gatewayTurn, req apiRequest, model Model) (*Re
 	p := &toolProbe{c: g.c, sandbox: sandbox, workspace: workspace, connector: connector, journal: filepath.Join(g.dir, "gateway-native-"+t.id+".json"), events: map[string]int{}, records: map[string]object{}, forward: func(ctx context.Context, call, input object) (object, error) {
 		return g.forwardClientTool(ctx, t, call, input)
 	}}
-	prepared, records, err := g.c.prepareAPIMedia(t.ctx, req)
+	build := func(conversation string) (object, error) {
+		part := req
+		if conversation != "" {
+			part.Messages = req.Messages[continued:]
+		}
+		prepared, records, err := g.c.prepareAPIMedia(t.ctx, part)
+		if err != nil {
+			return nil, err
+		}
+		body := localToolBody(renderAPIPrompt(prepared, connectorName(t.id), conversation != ""), conversation, model, workspace, sandbox, g.c.session.DeviceID, connector, tools)
+		applyEffort(body, model, req.Effort)
+		if len(records) > 0 {
+			appendMedia(body, records)
+		}
+		return body, nil
+	}
+	body, err := build(conversation)
 	if err != nil {
 		return nil, err
-	}
-	body := localToolBody(renderAPIPrompt(prepared, connectorName(t.id)), model, workspace, sandbox, g.c.session.DeviceID, connector, tools)
-	applyEffort(body, model, req.Effort)
-	if len(records) > 0 {
-		appendMedia(body, records)
 	}
 	ctx, cancel := context.WithCancel(t.ctx)
 	defer cancel()
@@ -544,6 +613,24 @@ func (g *gateway) runWithTools(t *gatewayTurn, req apiRequest, model Model) (*Re
 		return nil, err
 	}
 	receipt, runErr := g.c.run(ctx, body, t.receiptPath)
+	var rejected *upstreamError
+	if conversation != "" && errors.As(runErr, &rejected) && receipt != nil && !receipt.Accepted && ctx.Err() == nil {
+		fmt.Fprintf(os.Stderr, "GATEWAY_THREAD_FALLBACK mode=tools code=%d\n", rejected.Code)
+		g.mu.Lock()
+		t.conversation = ""
+		g.mu.Unlock()
+		if body, err = build(""); err != nil {
+			return nil, err
+		}
+		g.mu.Lock()
+		t.generationPosts++
+		err = g.checkpointLocked(t)
+		g.mu.Unlock()
+		if err != nil {
+			return nil, err
+		}
+		receipt, runErr = g.c.run(ctx, body, t.receiptPath)
+	}
 	cancel()
 	streamErr := <-done
 	joined = true
@@ -618,7 +705,10 @@ func (g *gateway) serveTools(ctx, streamCtx context.Context, cancel context.Canc
 	go func() {
 		err, handleErr := <-read, <-handled
 		g.inboxMu.Lock()
-		delete(g.inboxes, p.sandbox)
+		// A continued conversation's next task reuses the sandbox.
+		if g.inboxes[p.sandbox].frames == inbox.frames {
+			delete(g.inboxes, p.sandbox)
+		}
 		g.inboxMu.Unlock()
 		if handleErr != nil {
 			err = handleErr

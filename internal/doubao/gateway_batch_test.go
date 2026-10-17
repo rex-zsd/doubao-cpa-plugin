@@ -174,13 +174,13 @@ func TestOversizedBatchCatalogFallsBackToSingleCalls(t *testing.T) {
 	req := toolRequest()
 	parallel := true
 	req.Parallel = &parallel
-	if !batchMode(req) || !strings.Contains(renderAPIPrompt(req, "connector"), batchToolName) {
+	if !batchMode(req) || !strings.Contains(renderAPIPrompt(req, "connector", false), batchToolName) {
 		t.Fatal("a small parallel catalog was not batched")
 	}
 	for i := 0; i < 10; i++ {
 		req.Tools = append(req.Tools, apiTool{Type: "function", Function: apiFunction{Name: fmt.Sprintf("lookup_%d", i), Description: strings.Repeat("x", 5000), Parameters: object{"type": "object", "properties": object{}}}})
 	}
-	if utf16Len(batchSchema(req.Tools)) <= batchSchemaLimit || batchMode(req) || strings.Contains(renderAPIPrompt(req, "connector"), batchToolName) {
+	if utf16Len(batchSchema(req.Tools)) <= batchSchemaLimit || batchMode(req) || strings.Contains(renderAPIPrompt(req, "connector", false), batchToolName) {
 		t.Fatal("an oversized catalog was batched")
 	}
 	g, server := testGateway(t)

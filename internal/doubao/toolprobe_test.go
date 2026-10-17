@@ -121,7 +121,7 @@ func TestNativeToolScopeDeduplicationAndSerializedResult(t *testing.T) {
 }
 
 func TestLocalToolRequestKeepsSchemaOutsideUserPrompt(t *testing.T) {
-	body := localToolBody("fixture", Model{ID: "1", Think: 1}, "/owned", "sandbox", "123", "456", []any{object{"name": "get_nonce", "inputSchema": jsonText(nonceTool()["inputSchema"])}})
+	body := localToolBody("fixture", "", Model{ID: "1", Think: 1}, "/owned", "sandbox", "123", "456", []any{object{"name": "get_nonce", "inputSchema": jsonText(nonceTool()["inputSchema"])}})
 	gt := field(body, "option", "general_task_param")
 	if number(field(gt, "runtime_type")) != 2 || field(body, "ext", "general_task_param") != jsonText(gt) {
 		t.Fatal("local runtime not configured consistently")

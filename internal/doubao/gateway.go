@@ -419,7 +419,9 @@ type gatewayTurn struct {
 	done                                       bool
 	finished                                   time.Time
 	deadline                                   time.Time
-	err                                        *apiError
+	// timer stops the task with task_expired at deadline; see armLocked.
+	timer *time.Timer
+	err   *apiError
 	// abort is set when a newer request superseded or evicted the task; the
 	// runner stops upstream work and finishes with it.
 	abort            *apiError
@@ -428,6 +430,27 @@ type gatewayTurn struct {
 	denied           int
 	cleanupConfirmed bool
 	cleanupRequested bool
+	// conversation is the Work conversation the task continues or created and
+	// mode how it was created: "chat", "work" or "tools". A continued task
+	// sends only the messages after the first continued ones.
+	conversation, mode, workspace string
+	continued                     int
+}
+
+// threadTTL and threadLimit bound how long and how many answered
+// conversations stay available for continuation.
+const threadTTL, threadLimit = 12 * time.Hour, 128
+
+// gatewayThread is the Work conversation that produced an answer. A request
+// that extends exactly the history it answered continues it instead of
+// opening a new conversation with the full transcript.
+type gatewayThread struct {
+	conversation, mode, workspace, sandbox string
+	used                                   time.Time
+	// header and keys are the thread's threadHeader and history prefix keys,
+	// kept to log where a request that almost matched diverged.
+	header string
+	keys   []string
 }
 type gatewayIdempotency struct {
 	hash     string
@@ -447,6 +470,8 @@ type gateway struct {
 	turns       map[string]*gatewayTurn
 	calls       map[string]*clientToolPending
 	idempotency map[string]gatewayIdempotency
+	// threads maps the key of an answered history to its conversation.
+	threads map[string]*gatewayThread
 	// inboxes queues native tool frames for each running task by sandbox.
 	inboxMu sync.Mutex
 	inboxes map[string]toolInbox
@@ -456,7 +481,7 @@ type gateway struct {
 }
 
 func newGateway(ctx context.Context, c *Client, models []Model, dir string, timeout time.Duration) *gateway {
-	g := &gateway{c: c, models: models, dir: dir, ctx: ctx, taskTimeout: timeout, apiKey: os.Getenv("DOUBAO_PROXY_API_KEY"), turns: map[string]*gatewayTurn{}, calls: map[string]*clientToolPending{}, idempotency: map[string]gatewayIdempotency{}}
+	g := &gateway{c: c, models: models, dir: dir, ctx: ctx, taskTimeout: timeout, apiKey: os.Getenv("DOUBAO_PROXY_API_KEY"), turns: map[string]*gatewayTurn{}, calls: map[string]*clientToolPending{}, idempotency: map[string]gatewayIdempotency{}, threads: map[string]*gatewayThread{}}
 	g.run = g.runNative
 	return g
 }
@@ -467,12 +492,17 @@ func (g *gateway) checkpointLocked(t *gatewayTurn) error {
 			pending = append(pending, object{"id": id, "call": p.call, "native_id": p.nativeID, "exchange": exchangeRecord(p.exposed), "next_exchange": exchangeRecord(p.next), "batch_calls": p.batchCalls, "expected_messages": p.expected, "submitted": p.submitted, "result": p.value})
 		}
 	}
-	return saveJSON(t.statePath, object{"version": 2, "finished_at": t.finished.Unix(), "deadline": t.deadline.Unix(), "error_status": errorStatus(t.err), "id": t.id, "initial_key": t.initialKey, "initial_hash": t.initialHash, "first_exchange": exchangeRecord(t.first), "current_exchange": exchangeRecord(t.current), "final_text": t.finalText, "request": t.request, "connector_id": t.connector, "sandbox_id": t.sandbox, "receipt_path": t.receiptPath, "generation_posts": t.generationPosts, "forwarded_tools": t.forwarded, "denied_tools": t.denied, "done": t.done, "cleanup_requested": t.cleanupRequested, "cleanup_confirmed": t.cleanupConfirmed, "pending": pending, "error": t.err})
+	return saveJSON(t.statePath, object{"version": 2, "finished_at": t.finished.Unix(), "deadline": t.deadline.Unix(), "error_status": errorStatus(t.err), "id": t.id, "initial_key": t.initialKey, "initial_hash": t.initialHash, "first_exchange": exchangeRecord(t.first), "current_exchange": exchangeRecord(t.current), "final_text": t.finalText, "request": t.request, "connector_id": t.connector, "sandbox_id": t.sandbox, "receipt_path": t.receiptPath, "generation_posts": t.generationPosts, "forwarded_tools": t.forwarded, "denied_tools": t.denied, "done": t.done, "cleanup_requested": t.cleanupRequested, "cleanup_confirmed": t.cleanupConfirmed, "pending": pending, "error": t.err, "conversation_id": t.conversation, "mode": t.mode, "workspace": t.workspace, "continued": t.continued})
 }
 func (g *gateway) sweepLocked() {
 	for _, t := range g.turns {
 		if t.done && (t.connector == "" || t.cleanupConfirmed) && time.Since(t.finished) > 30*time.Minute {
 			g.dropTurnLocked(t)
+		}
+	}
+	for key, th := range g.threads {
+		if time.Since(th.used) > threadTTL {
+			g.forgetLocked(key)
 		}
 	}
 }
@@ -483,7 +513,6 @@ func (g *gateway) dropTurnLocked(t *gatewayTurn) {
 	for _, prefix := range []string{"gateway-state-", "gateway-native-", "gateway-schema-", "gateway-receipt-"} {
 		_ = os.Remove(filepath.Join(g.dir, prefix+id+".json"))
 	}
-	_ = os.RemoveAll(filepath.Join(g.dir, "gateway-workspace-"+id))
 	_ = os.Remove(filepath.Join(g.dir, "gateway-receipt-"+id+".json.stop.json"))
 	mediaReceipts, _ := filepath.Glob(filepath.Join(g.dir, "gateway-media-"+id+"-*.json"))
 	for _, path := range mediaReceipts {
@@ -491,6 +520,7 @@ func (g *gateway) dropTurnLocked(t *gatewayTurn) {
 		_ = os.Remove(path + ".stop.json")
 	}
 	delete(g.turns, id)
+	g.releaseWorkspaceLocked(turnWorkspace(g.dir, t))
 	for call, p := range g.calls {
 		if p.turn == t {
 			delete(g.calls, call)
@@ -500,6 +530,182 @@ func (g *gateway) dropTurnLocked(t *gatewayTurn) {
 		if entry.turn == t {
 			delete(g.idempotency, key)
 		}
+	}
+}
+
+// turnWorkspace is the local folder a tool task runs in; tasks saved by
+// earlier versions used one named after the task.
+func turnWorkspace(dir string, t *gatewayTurn) string {
+	if t.workspace != "" {
+		return t.workspace
+	}
+	return filepath.Join(dir, "gateway-workspace-"+t.id)
+}
+
+// releaseWorkspaceLocked deletes a task folder once no task or thread uses it.
+func (g *gateway) releaseWorkspaceLocked(path string) {
+	if path == "" {
+		return
+	}
+	for _, t := range g.turns {
+		if turnWorkspace(g.dir, t) == path {
+			return
+		}
+	}
+	for _, th := range g.threads {
+		if th.workspace == path {
+			return
+		}
+	}
+	_ = os.RemoveAll(path)
+}
+
+// forgetLocked drops a thread; its conversation is no longer continued.
+func (g *gateway) forgetLocked(key string) {
+	if th := g.threads[key]; th != nil {
+		delete(g.threads, key)
+		g.releaseWorkspaceLocked(th.workspace)
+	}
+}
+
+// threadKeys hashes each prefix of messages, chained so that equal keys mean
+// equal histories.
+func threadKeys(messages []apiMessage) []string {
+	h, keys := "", make([]string, len(messages))
+	for i, m := range messages {
+		h = apiHash([]string{h, threadMessage(m)})
+		keys[i] = h
+	}
+	return keys
+}
+
+// threadHeader covers the model and, for tool requests, the tool set: a
+// conversation continues only under the settings it was made with. A thread
+// is stored under threadKey(header, the key of the history it answered).
+func threadHeader(req apiRequest) string {
+	header := object{"model": req.Model}
+	if usesTools(req) {
+		header["tools"], header["parallel"] = req.Tools, parallelRequested(req)
+	}
+	return apiHash(header)
+}
+func threadKey(header, history string) string { return apiHash([]string{header, history}) }
+
+// threadMessage is what a thread key covers of a message: its role, text,
+// media and calls, but not how the caller laid out text (a string or text
+// parts) or the whitespace around it.
+func threadMessage(m apiMessage) string {
+	content := m.Content
+	if parts, ok := content.([]any); ok {
+		text := []string{}
+		for _, part := range parts {
+			if kind := textValue(field(part, "type")); kind != "text" && kind != "input_text" && kind != "output_text" {
+				text = nil
+				break
+			}
+			text = append(text, textValue(field(part, "text")))
+		}
+		if text != nil {
+			content = strings.Join(text, "")
+		}
+	}
+	if text, ok := content.(string); ok {
+		if content = strings.TrimSpace(text); content == "" {
+			content = nil
+		}
+	}
+	calls := []any{}
+	for _, call := range m.ToolCalls {
+		calls = append(calls, []string{call.ID, call.Function.Name, call.Function.Arguments})
+	}
+	return jsonText(object{"role": m.Role, "content": content, "tool_call_id": m.ToolCallID, "tool_calls": calls})
+}
+
+// claimThreadLocked takes the conversation that answered the longest prefix
+// of req's history, ending in a plain assistant answer, if one is live. The
+// thread leaves the map: a conversation continues only once, so a concurrent
+// or regenerated request opens a new one.
+func (g *gateway) claimThreadLocked(req apiRequest) (string, *gatewayThread, int) {
+	header, keys := threadHeader(req), threadKeys(req.Messages)
+	for i := len(req.Messages) - 2; i >= 0; i-- {
+		if m := req.Messages[i]; m.Role != "assistant" || len(m.ToolCalls) > 0 {
+			continue
+		}
+		key := threadKey(header, keys[i])
+		th := g.threads[key]
+		if th == nil {
+			continue
+		}
+		delete(g.threads, key)
+		if time.Since(th.used) > threadTTL {
+			g.releaseWorkspaceLocked(th.workspace)
+			continue
+		}
+		return key, th, i + 1
+	}
+	g.logThreadMissLocked(req, header, keys)
+	return "", nil, 0
+}
+
+// logThreadMissLocked reports, without content, where a multi-turn request
+// left the closest remembered history.
+func (g *gateway) logThreadMissLocked(req apiRequest, header string, keys []string) {
+	assistant := false
+	for _, m := range req.Messages {
+		assistant = assistant || m.Role == "assistant"
+	}
+	best, of, same := 0, 0, false
+	for _, th := range g.threads {
+		n := 0
+		for n < len(keys) && n < len(th.keys) && keys[n] == th.keys[n] {
+			n++
+		}
+		if n > best || n == best && th.header == header {
+			best, of, same = n, len(th.keys), th.header == header
+		}
+	}
+	// A request inside a remembered history repeats it, e.g. a regenerate.
+	if !assistant || len(g.threads) == 0 || best >= len(req.Messages) && same {
+		return
+	}
+	headerState, role, shape, calls := "changed", "-", "-", 0
+	if same {
+		headerState = "same"
+	}
+	if best < len(req.Messages) {
+		m := req.Messages[best]
+		role, shape, calls = m.Role, fmt.Sprintf("%T", m.Content), len(m.ToolCalls)
+		if parts, ok := m.Content.([]any); ok {
+			kinds := []string{}
+			for _, part := range parts {
+				kinds = append(kinds, textValue(field(part, "type")))
+			}
+			shape = "parts:" + strings.Join(kinds, ",")
+		}
+	}
+	fmt.Fprintf(os.Stderr, "GATEWAY_THREAD_MISS messages=%d matched=%d of=%d header=%s role=%s content=%s calls=%d\n", len(req.Messages), best, of, headerState, role, shape, calls)
+}
+
+// rememberLocked records the conversation behind a successful answer under
+// the history it completes. A tool task's conversation is kept only after its
+// connector was removed.
+func (g *gateway) rememberLocked(t *gatewayTurn, text string) {
+	if t.conversation == "" || t.mode == "" || t.connector != "" && !t.cleanupConfirmed {
+		return
+	}
+	messages := append(append([]apiMessage{}, t.request.Messages...), apiMessage{Role: "assistant", Content: text})
+	header, keys := threadHeader(t.request), threadKeys(messages)
+	key := threadKey(header, keys[len(keys)-1])
+	g.forgetLocked(key)
+	g.threads[key] = &gatewayThread{conversation: t.conversation, mode: t.mode, workspace: t.workspace, sandbox: t.sandbox, used: time.Now(), header: header, keys: keys}
+	for len(g.threads) > threadLimit {
+		oldest := ""
+		for k, th := range g.threads {
+			if oldest == "" || th.used.Before(g.threads[oldest].used) {
+				oldest = k
+			}
+		}
+		g.forgetLocked(oldest)
 	}
 }
 
@@ -579,6 +785,15 @@ func (g *gateway) continueLocked(req apiRequest, key string, head, results, afte
 		return p.next, nil
 	}
 	if t.done || t.abort != nil {
+		return restart()
+	}
+	if exhaustedLocked(t) {
+		fmt.Fprintf(os.Stderr, "GATEWAY_TASK_ROTATED forwarded=%d\n", t.forwarded)
+		return restart()
+	}
+	// Work gets a full timeout to answer the result. A task whose deadline
+	// passed while its expiry waited for the lock is replaced the same way.
+	if !g.renewLocked(t) {
 		return restart()
 	}
 	x := newExchange(req.Model)
@@ -662,6 +877,47 @@ func (g *gateway) supersedeLocked(t *gatewayTurn, abort *apiError) {
 	t.cancel()
 }
 
+// armLocked starts t's deadline timer. A task still running when it fires is
+// stopped with task_expired; renewLocked moves the deadline.
+func (g *gateway) armLocked(t *gatewayTurn) {
+	t.timer = time.AfterFunc(time.Until(t.deadline), func() {
+		g.mu.Lock()
+		defer g.mu.Unlock()
+		if !t.done && t.abort == nil && !g.suspending {
+			fmt.Fprintf(os.Stderr, "GATEWAY_TASK_EXPIRED waiting=%t forwarded=%d\n", g.waitingLocked(t), t.forwarded)
+			g.supersedeLocked(t, apiFail(504, "task_expired", "Upstream task did not answer or receive a tool result within the task timeout. An accepted generation was not resubmitted; inspect the private receipt before retrying."))
+		}
+	})
+}
+
+// renewLocked moves a running task's deadline taskTimeout ahead, so the limit
+// applies to each wait (the caller running a tool, Work answering its result)
+// rather than to the whole tool chain. It reports false for a task whose
+// deadline already passed, which stays expired.
+func (g *gateway) renewLocked(t *gatewayTurn) bool {
+	if t.timer == nil || !t.timer.Stop() {
+		return false
+	}
+	t.deadline = time.Now().Add(g.taskTimeout)
+	t.timer.Reset(g.taskTimeout)
+	return true
+}
+
+// maxForwarded bounds the caller tool calls one task forwards, keeping Work's
+// run context bounded. A continuation that could take the task past it starts
+// a new task over the full transcript instead; see exhaustedLocked.
+const maxForwarded = 32
+
+// exhaustedLocked reports a task whose next call could exceed maxForwarded: a
+// batch forwards up to 8 calls at once.
+func exhaustedLocked(t *gatewayTurn) bool {
+	next := 1
+	if batchMode(t.request) {
+		next = 8
+	}
+	return t.forwarded+next > maxForwarded
+}
+
 // apiFingerprint identifies a request for idempotency. Optional fields join
 // only when set, so fingerprints saved by earlier versions still match.
 func apiFingerprint(req apiRequest) string {
@@ -705,8 +961,9 @@ func (g *gateway) startLocked(req apiRequest, key string, transcript bool) (*api
 	if failure := g.reserveLocked(); failure != nil {
 		return nil, failure
 	}
+	threadKey, thread, continued := g.claimThreadLocked(req)
 	deadline := time.Now().Add(g.taskTimeout)
-	ctx, cancel := context.WithDeadline(g.ctx, deadline)
+	ctx, cancel := context.WithCancel(g.ctx)
 	x := newExchange(req.Model)
 	x.prompt = estimateTokens(prompt)
 	id := token()
@@ -714,10 +971,20 @@ func (g *gateway) startLocked(req apiRequest, key string, transcript bool) (*api
 	if key != "" {
 		t.initialKey = apiHash(key)
 	}
+	if thread != nil {
+		t.conversation, t.mode, t.workspace, t.sandbox, t.continued = thread.conversation, thread.mode, thread.workspace, thread.sandbox, continued
+	}
 	if err := g.checkpointLocked(t); err != nil {
 		cancel()
+		if thread != nil {
+			g.threads[threadKey] = thread
+		}
 		return nil, apiFail(500, "state_persistence_failed", "Could not persist request; generation was not submitted")
 	}
+	if thread != nil {
+		fmt.Fprintf(os.Stderr, "GATEWAY_THREAD continued mode=%s messages=%d new=%d\n", thread.mode, len(req.Messages), len(req.Messages)-continued)
+	}
+	g.armLocked(t)
 	g.turns[id] = t
 	if key != "" {
 		g.idempotency[apiHash(key)] = gatewayIdempotency{hash: fingerprint, turn: t, exchange: x}
@@ -807,7 +1074,7 @@ func promptText(req apiRequest) string {
 	if usesTools(req) {
 		connector = connectorName(strings.Repeat("0", 32))
 	}
-	return renderAPIPrompt(clone, connector)
+	return renderAPIPrompt(clone, connector, false)
 }
 
 // utf16Len counts UTF-16 code units, the unit of Work's message limit.
@@ -852,10 +1119,16 @@ func promptTooLong(text string) *apiError {
 func (g *gateway) finish(t *gatewayTurn, text string, failure *apiError) {
 	g.mu.Lock()
 	t.done, t.finished, t.err, t.finalText = true, time.Now(), failure, text
+	if t.timer != nil {
+		t.timer.Stop()
+	}
 	x := t.current
 	if err := g.checkpointLocked(t); err != nil && failure == nil {
 		failure = apiFail(500, "state_persistence_failed", "Upstream completed but its final state could not be persisted; do not resubmit generation")
 		t.err = failure
+	}
+	if failure == nil {
+		g.rememberLocked(t, text)
 	}
 	g.mu.Unlock()
 	t.cancel()

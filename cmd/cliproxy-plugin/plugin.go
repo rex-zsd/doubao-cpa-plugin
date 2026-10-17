@@ -228,7 +228,7 @@ func dispatch(method string, raw []byte) (any, error) {
 		}
 		runtime.closed = false
 		runtime.Unlock()
-		return object{"schema_version": 6, "metadata": object{"Name": provider, "Version": "0.3.7", "Author": "rex", "GitHubRepository": "https://github.com/rex-zsd/doubao-cpa-plugin", "ConfigFields": []any{object{"Name": "state_dir", "Type": "string", "Description": "Private account and task state directory"}, object{"Name": "helper_path", "Type": "string", "Description": "Absolute path to doubao-helper"}}}, "capabilities": object{"auth_provider": true, "model_provider": true, "executor": true, "executor_model_scope": "oauth", "executor_input_formats": []string{"chat-completions", "openai-response"}, "executor_output_formats": []string{"chat-completions"}}}, nil
+		return object{"schema_version": 6, "metadata": object{"Name": provider, "Version": "0.3.9", "Author": "rex", "GitHubRepository": "https://github.com/rex-zsd/doubao-cpa-plugin", "ConfigFields": []any{object{"Name": "state_dir", "Type": "string", "Description": "Private account and task state directory"}, object{"Name": "helper_path", "Type": "string", "Description": "Absolute path to doubao-helper"}}}, "capabilities": object{"auth_provider": true, "model_provider": true, "executor": true, "executor_model_scope": "oauth", "executor_input_formats": []string{"chat-completions", "openai-response"}, "executor_output_formats": []string{"chat-completions"}}}, nil
 	case "plugin.shutdown", "plugin.quiesce":
 		closePlugin()
 		return object{}, nil

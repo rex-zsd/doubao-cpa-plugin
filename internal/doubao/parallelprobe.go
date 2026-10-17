@@ -264,7 +264,7 @@ func (c *Client) probeParallel(ctx context.Context, model Model, private string,
 	}
 	challenge := "parallel_" + token()[:16]
 	prompt := "并行工具调用能力验证。三个函数 lookup_alpha、lookup_beta、lookup_gamma 互相独立。请在同一轮同时发起这三个函数的调用，三个 challenge 参数都必须是 " + challenge + "。必须先发出所有三个调用再等待结果，不要串行等待。所有工具都在 MCP 连接器 " + connector + " 中。不要使用本地 Bash/Read/Write/Edit 或其他工具，也不要模拟工具结果。得到三份真实结果后，最终只输出一行 JSON，格式为 {\"alpha\":lookup_alpha返回的value,\"beta\":lookup_beta返回的value,\"gamma\":lookup_gamma返回的value}，不要解释或代码块。"
-	body := localToolBody(prompt, model, workspace, "parallel-"+runID, c.session.DeviceID, connector, tools)
+	body := localToolBody(prompt, "", model, workspace, "parallel-"+runID, c.session.DeviceID, connector, tools)
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	group := &burstGroup{gate: make(chan struct{}), challenge: challenge, connector: connector, receipt: receiptPath, byID: map[string]*burstCall{}, hold: 12 * time.Second}

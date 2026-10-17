@@ -235,7 +235,7 @@ func TestGatewayOversizedPromptAsksForCompaction(t *testing.T) {
 func TestPromptNamesConnectorTools(t *testing.T) {
 	req := toolRequest()
 	req.Tools = append(req.Tools, apiTool{Type: "function", Function: apiFunction{Name: "Get-Weather", Parameters: object{"type": "object"}}})
-	prompt := renderAPIPrompt(req, connectorName("0123456789abcdef"))
+	prompt := renderAPIPrompt(req, connectorName("0123456789abcdef"), false)
 	for _, want := range []string{"完整工具名是：mcp__independent_http_tools_0123456789ab__client_nonce、mcp__independent_http_tools_0123456789ab__get_weather（Get-Weather）。", "query 只写这个函数的完整工具名，例如 mcp__independent_http_tools_0123456789ab__client_nonce；"} {
 		if !strings.Contains(prompt, want) {
 			t.Fatal("prompt lacks", want)
@@ -243,7 +243,7 @@ func TestPromptNamesConnectorTools(t *testing.T) {
 	}
 	parallel := true
 	req.Parallel = &parallel
-	if prompt = renderAPIPrompt(req, connectorName("0123456789abcdef")); !strings.Contains(prompt, "完整工具名是：mcp__independent_http_tools_0123456789ab__"+batchToolName+"。") {
+	if prompt = renderAPIPrompt(req, connectorName("0123456789abcdef"), false); !strings.Contains(prompt, "完整工具名是：mcp__independent_http_tools_0123456789ab__"+batchToolName+"。") {
 		t.Fatal("batched prompt does not name the batch tool")
 	}
 }
@@ -264,7 +264,7 @@ func TestLongToolDescriptionsMoveIntoThePrompt(t *testing.T) {
 	if connectorDescription(req.Tools[0]) != "fits" || utf16Len(head) > 2100 || strings.Contains(head, "END-OF-DOCS") || !strings.Contains(head, "「函数 long 的完整说明」") {
 		t.Fatal("connector description was not shortened", utf16Len(head))
 	}
-	if prompt := renderAPIPrompt(req, "connector"); !strings.Contains(prompt, "「函数 long 的完整说明」\n"+long) || strings.Contains(prompt, "函数 short 的完整说明") {
+	if prompt := renderAPIPrompt(req, "connector", false); !strings.Contains(prompt, "「函数 long 的完整说明」\n"+long) || strings.Contains(prompt, "函数 short 的完整说明") {
 		t.Fatal("prompt lacks exactly the long description")
 	}
 	if !strings.Contains(promptText(req), "END-OF-DOCS") || strings.Contains(jsonText(batchCatalog(req.Tools)), "END-OF-DOCS") {
@@ -292,7 +292,7 @@ func TestLongToolSchemasMoveIntoThePrompt(t *testing.T) {
 	if schema := jsonText(connectorSchema(req.Tools[1])); strings.Contains(schema, "END-OF-SCHEMA") || !strings.Contains(schema, "「函数 big 的参数结构」") {
 		t.Fatal("connector schema was not replaced", schema)
 	}
-	if prompt := renderAPIPrompt(req, "connector"); !strings.Contains(prompt, "「函数 big 的参数结构」\n"+plainJSON(big)) || strings.Contains(prompt, "函数 small 的参数结构") || strings.Contains(prompt, batchToolName) {
+	if prompt := renderAPIPrompt(req, "connector", false); !strings.Contains(prompt, "「函数 big 的参数结构」\n"+plainJSON(big)) || strings.Contains(prompt, "函数 small 的参数结构") || strings.Contains(prompt, batchToolName) {
 		t.Fatal("prompt lacks exactly the long schema, or still batches")
 	}
 	// The limit counts the description too.
