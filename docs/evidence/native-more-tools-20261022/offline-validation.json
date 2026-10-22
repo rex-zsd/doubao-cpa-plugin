@@ -1,0 +1,21 @@
+{
+  "source_commit": "407a178",
+  "validation": [
+    "gofmt -l . (empty)",
+    "go vet ./...",
+    "go test -race -count=1 ./..."
+  ],
+  "status": "passed",
+  "checks": {
+    "native_notebook_glob_grep_task_and_background_bash_exact_arguments": true,
+    "work_only_options_aliases_and_relative_paths_keep_mcp": true,
+    "background_bash_requires_declared_run_in_background": true,
+    "same_name_with_different_required_contract_rejected": true,
+    "sandbox_escape_call_option_never_forwarded": true,
+    "undeclared_glob_grep_task_output_keep_client_tool_only_hint": true,
+    "native_results_errors_and_http_replay_exact": true,
+    "pending_native_calls_restart_without_new_generation": true,
+    "forced_tool_choice_and_batch_priority_kept": true,
+    "complete_prompt_fallback_without_truncation": true
+  }
+}

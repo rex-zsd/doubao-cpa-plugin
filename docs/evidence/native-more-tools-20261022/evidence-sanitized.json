@@ -1,0 +1,1261 @@
+{
+  "version": "0.3.21",
+  "reports": {
+    "probe-glob_options_probe": {
+      "phase": "probe",
+      "case": "glob_options_probe",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "catalog": "augmented",
+      "tools": 35,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            12.297,
+            7.278
+          ],
+          "client_seconds": 0.001,
+          "executions": 1,
+          "idempotent_replays": 2,
+          "answer_ok": false,
+          "failure_type": "AssertionError",
+          "failure": "Bash command outside the guarded read-only fixture",
+          "http_status": null,
+          "total_seconds": 19.622,
+          "tool_names": [
+            "Glob"
+          ],
+          "task_id": "5965696e0456e568c7b9bb005bd9caac",
+          "done": false,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 2,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": false,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Glob",
+            "Bash"
+          ],
+          "native_path_proven": false,
+          "native_results_uploaded": 1,
+          "native_original_inputs_preserved": false,
+          "native_result_ids_match": false,
+          "native_frames": [
+            {
+              "name": "Glob",
+              "denied": false,
+              "input": {
+                "path": "fixture",
+                "pattern": "**/*.go"
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "agent_type",
+                  "cli_env",
+                  "conversation_id",
+                  "env_vars",
+                  "generate_timestamp_ms",
+                  "glob_config",
+                  "localhub_task_deadline_ms",
+                  "security_risk_text_v1",
+                  "unique_key",
+                  "workspace_tool_result_dir"
+                ],
+                "glob_config": {
+                  "follow_directory_symlinks": false,
+                  "glob_protocol_v2": "1",
+                  "include_directories": false,
+                  "include_symlinks": false,
+                  "max_results": 500,
+                  "sort_by": "modified",
+                  "sort_order": "asc",
+                  "timeout_ms": 60000
+                }
+              },
+              "lark_option_present": false
+            },
+            {
+              "name": "Bash",
+              "denied": false,
+              "input": {
+                "command": {
+                  "type": "str",
+                  "chars": 131
+                },
+                "description": {
+                  "type": "str",
+                  "chars": 54
+                }
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "agent_type",
+                  "cli_env",
+                  "conversation_id",
+                  "env_vars",
+                  "generate_timestamp_ms",
+                  "localhub_task_deadline_ms",
+                  "security_risk_text_v1",
+                  "unique_key",
+                  "workspace_tool_result_dir"
+                ]
+              },
+              "lark_option_present": true
+            }
+          ],
+          "denied_names": [],
+          "actual_results_and_errors_exact": false,
+          "forwarded_args_exact": true
+        }
+      ]
+    },
+    "native-coding_chain": {
+      "phase": "native",
+      "case": "coding_chain",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            8.072,
+            9.072,
+            6.727,
+            6.208,
+            6.824
+          ],
+          "client_seconds": 0.0,
+          "executions": 4,
+          "idempotent_replays": 4,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 36.966,
+          "tool_names": [
+            "Read",
+            "Write",
+            "Edit",
+            "Read"
+          ],
+          "task_id": "d7a123c9535c88496d6b62cfff10c998",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 4,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Read",
+            "Write",
+            "Edit",
+            "Read"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 4,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        }
+      ]
+    },
+    "native-glob_fallback_real": {
+      "phase": "native",
+      "case": "glob_fallback_real",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "catalog": "real",
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            9.341,
+            6.585
+          ],
+          "client_seconds": 0.015,
+          "executions": 1,
+          "idempotent_replays": 1,
+          "fallback_commands": [
+            {
+              "command": {
+                "type": "str",
+                "chars": 115
+              },
+              "description": {
+                "type": "str",
+                "chars": 26
+              }
+            }
+          ],
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 15.979,
+          "tool_names": [
+            "Bash"
+          ],
+          "task_id": "fff21f7771e09aac203a5211aec8140e",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Bash"
+          ],
+          "native_path_proven": false,
+          "native_results_uploaded": 1,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "native_frames": [
+            {
+              "name": "Bash",
+              "denied": false,
+              "input": {
+                "command": {
+                  "type": "str",
+                  "chars": 115
+                },
+                "description": {
+                  "type": "str",
+                  "chars": 26
+                }
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "agent_type",
+                  "cli_env",
+                  "conversation_id",
+                  "env_vars",
+                  "generate_timestamp_ms",
+                  "localhub_task_deadline_ms",
+                  "security_risk_text_v1",
+                  "unique_key",
+                  "workspace_tool_result_dir"
+                ]
+              },
+              "lark_option_present": true
+            }
+          ],
+          "denied_names": [],
+          "actual_results_and_errors_exact": true,
+          "forwarded_args_exact": true
+        }
+      ]
+    },
+    "native-grep": {
+      "phase": "native",
+      "case": "grep",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "catalog": "augmented",
+      "tools": 35,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            12.128,
+            8.184
+          ],
+          "client_seconds": 0.001,
+          "executions": 1,
+          "idempotent_replays": 1,
+          "grep_args": [
+            "-n",
+            "output_mode",
+            "path",
+            "pattern"
+          ],
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 20.337,
+          "tool_names": [
+            "Grep"
+          ],
+          "task_id": "f827e5b897473c1388c205e814f50e1b",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Grep"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 1,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "native_frames": [
+            {
+              "name": "Grep",
+              "denied": false,
+              "input": {
+                "-n": true,
+                "output_mode": "content",
+                "path": "fixture",
+                "pattern": "ACTUAL_[0-9A-F]{32}"
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "agent_type",
+                  "cli_env",
+                  "conversation_id",
+                  "env_vars",
+                  "generate_timestamp_ms",
+                  "localhub_task_deadline_ms",
+                  "security_risk_text_v1",
+                  "unique_key",
+                  "workspace_tool_result_dir"
+                ]
+              },
+              "lark_option_present": false
+            }
+          ],
+          "denied_names": [],
+          "actual_results_and_errors_exact": true,
+          "forwarded_args_exact": true
+        }
+      ]
+    },
+    "native-background_output": {
+      "phase": "native",
+      "case": "background_output",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "catalog": "augmented",
+      "tools": 35,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            9.384,
+            5.166,
+            5.755
+          ],
+          "client_seconds": 0.002,
+          "executions": 2,
+          "idempotent_replays": 2,
+          "task_output_args": [
+            "block",
+            "task_id"
+          ],
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 20.357,
+          "tool_names": [
+            "Bash",
+            "TaskOutput"
+          ],
+          "task_id": "5a06ac604653ebdd043167bfa1409c1a",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 2,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Bash",
+            "TaskOutput"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 2,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "native_frames": [
+            {
+              "name": "Bash",
+              "denied": false,
+              "input": {
+                "command": {
+                  "type": "str",
+                  "chars": 55
+                },
+                "run_in_background": true
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "agent_type",
+                  "cli_env",
+                  "conversation_id",
+                  "env_vars",
+                  "generate_timestamp_ms",
+                  "localhub_task_deadline_ms",
+                  "security_risk_text_v1",
+                  "unique_key",
+                  "workspace_tool_result_dir"
+                ]
+              },
+              "lark_option_present": true
+            },
+            {
+              "name": "TaskOutput",
+              "denied": false,
+              "input": {
+                "block": true,
+                "task_id": "bash_a98a3d"
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "agent_type",
+                  "cli_env",
+                  "conversation_id",
+                  "env_vars",
+                  "generate_timestamp_ms",
+                  "localhub_task_deadline_ms",
+                  "security_risk_text_v1",
+                  "unique_key",
+                  "workspace_tool_result_dir"
+                ]
+              },
+              "lark_option_present": false
+            }
+          ],
+          "denied_names": [],
+          "actual_results_and_errors_exact": true,
+          "forwarded_args_exact": true
+        }
+      ]
+    },
+    "native-notebook_chain": {
+      "phase": "native",
+      "case": "notebook_chain",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "catalog": "real",
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            17.258,
+            6.646,
+            5.788,
+            6.702
+          ],
+          "client_seconds": 0.002,
+          "executions": 3,
+          "idempotent_replays": 3,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 36.478,
+          "tool_names": [
+            "NotebookEdit",
+            "NotebookEdit",
+            "NotebookEdit"
+          ],
+          "task_id": "68b62d5d0f830c69d46772f2d51cd5d5",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 3,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": false,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "connector.call",
+            "connector.call",
+            "connector.call"
+          ],
+          "native_path_proven": false,
+          "native_results_uploaded": 3,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "native_frames": [
+            {
+              "name": "connector.call",
+              "denied": false,
+              "input": {
+                "arguments": {
+                  "type": "dict"
+                },
+                "connector_id": {
+                  "type": "str"
+                },
+                "protocol_version": 1,
+                "raw_arguments": {
+                  "type": "str",
+                  "chars": 236
+                },
+                "remote_tool_name": "NotebookEdit"
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "generate_timestamp_ms"
+                ]
+              },
+              "lark_option_present": false,
+              "remote_tool_name": "NotebookEdit",
+              "remote_arguments": {
+                "cell_id": "cell-a",
+                "edit_mode": "replace",
+                "new_source": {
+                  "type": "str",
+                  "chars": 62
+                },
+                "notebook_path": "fixture"
+              }
+            },
+            {
+              "name": "connector.call",
+              "denied": false,
+              "input": {
+                "arguments": {
+                  "type": "dict"
+                },
+                "connector_id": {
+                  "type": "str"
+                },
+                "protocol_version": 1,
+                "raw_arguments": {
+                  "type": "str",
+                  "chars": 209
+                },
+                "remote_tool_name": "NotebookEdit"
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "generate_timestamp_ms"
+                ]
+              },
+              "lark_option_present": false,
+              "remote_tool_name": "NotebookEdit",
+              "remote_arguments": {
+                "cell_id": "cell-a",
+                "cell_type": "markdown",
+                "edit_mode": "insert",
+                "new_source": {
+                  "type": "str",
+                  "chars": 18
+                },
+                "notebook_path": "fixture"
+              }
+            },
+            {
+              "name": "connector.call",
+              "denied": false,
+              "input": {
+                "arguments": {
+                  "type": "dict"
+                },
+                "connector_id": {
+                  "type": "str"
+                },
+                "protocol_version": 1,
+                "raw_arguments": {
+                  "type": "str",
+                  "chars": 168
+                },
+                "remote_tool_name": "NotebookEdit"
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "generate_timestamp_ms"
+                ]
+              },
+              "lark_option_present": false,
+              "remote_tool_name": "NotebookEdit",
+              "remote_arguments": {
+                "cell_id": "cell-b",
+                "edit_mode": "delete",
+                "new_source": {
+                  "type": "str",
+                  "chars": 0
+                },
+                "notebook_path": "fixture"
+              }
+            }
+          ],
+          "denied_names": [],
+          "actual_results_and_errors_exact": true,
+          "forwarded_args_exact": true
+        }
+      ]
+    },
+    "production-coding_chain": {
+      "phase": "production",
+      "case": "coding_chain",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            10.934,
+            6.468,
+            6.749,
+            5.156,
+            6.702
+          ],
+          "client_seconds": 0.0,
+          "executions": 4,
+          "idempotent_replays": 4,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 36.208,
+          "tool_names": [
+            "Read",
+            "Write",
+            "Edit",
+            "Read"
+          ],
+          "task_id": "a30d696b803386ab7228c6af445e8bff",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 4,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Read",
+            "Write",
+            "Edit",
+            "Read"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 4,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        }
+      ]
+    },
+    "probe-notebook_chain": {
+      "phase": "probe",
+      "case": "notebook_chain",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "catalog": "real",
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            16.502,
+            5.696,
+            6.037,
+            5.824
+          ],
+          "client_seconds": 0.003,
+          "executions": 3,
+          "idempotent_replays": 3,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 34.123,
+          "tool_names": [
+            "NotebookEdit",
+            "NotebookEdit",
+            "NotebookEdit"
+          ],
+          "task_id": "cd90df83eab7c89b1bc93563029c5113",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 3,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "connector.call",
+            "connector.call",
+            "connector.call"
+          ],
+          "native_path_proven": false,
+          "native_results_uploaded": 3,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "native_frames": [
+            {
+              "name": "connector.call",
+              "denied": false,
+              "input": {
+                "arguments": {
+                  "type": "dict"
+                },
+                "connector_id": {
+                  "type": "str"
+                },
+                "protocol_version": 1,
+                "raw_arguments": {
+                  "type": "str",
+                  "chars": 236
+                },
+                "remote_tool_name": "NotebookEdit"
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "generate_timestamp_ms"
+                ]
+              },
+              "lark_option_present": false,
+              "remote_tool_name": "NotebookEdit",
+              "remote_arguments": {
+                "cell_id": "cell-a",
+                "edit_mode": "replace",
+                "new_source": {
+                  "type": "str",
+                  "chars": 62
+                },
+                "notebook_path": "fixture"
+              }
+            },
+            {
+              "name": "connector.call",
+              "denied": false,
+              "input": {
+                "arguments": {
+                  "type": "dict"
+                },
+                "connector_id": {
+                  "type": "str"
+                },
+                "protocol_version": 1,
+                "raw_arguments": {
+                  "type": "str",
+                  "chars": 209
+                },
+                "remote_tool_name": "NotebookEdit"
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "generate_timestamp_ms"
+                ]
+              },
+              "lark_option_present": false,
+              "remote_tool_name": "NotebookEdit",
+              "remote_arguments": {
+                "cell_id": "cell-a",
+                "cell_type": "markdown",
+                "edit_mode": "insert",
+                "new_source": {
+                  "type": "str",
+                  "chars": 18
+                },
+                "notebook_path": "fixture"
+              }
+            },
+            {
+              "name": "connector.call",
+              "denied": false,
+              "input": {
+                "arguments": {
+                  "type": "dict"
+                },
+                "connector_id": {
+                  "type": "str"
+                },
+                "protocol_version": 1,
+                "raw_arguments": {
+                  "type": "str",
+                  "chars": 168
+                },
+                "remote_tool_name": "NotebookEdit"
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "generate_timestamp_ms"
+                ]
+              },
+              "lark_option_present": false,
+              "remote_tool_name": "NotebookEdit",
+              "remote_arguments": {
+                "cell_id": "cell-b",
+                "edit_mode": "delete",
+                "new_source": {
+                  "type": "str",
+                  "chars": 0
+                },
+                "notebook_path": "fixture"
+              }
+            }
+          ],
+          "denied_names": [],
+          "actual_results_and_errors_exact": true,
+          "forwarded_args_exact": true
+        }
+      ]
+    },
+    "production-background_stop": {
+      "phase": "production",
+      "case": "background_stop",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "catalog": "real",
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            12.262,
+            6.837,
+            5.836
+          ],
+          "client_seconds": 0.004,
+          "executions": 2,
+          "idempotent_replays": 2,
+          "task_stop_key": "task_id",
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 24.997,
+          "tool_names": [
+            "Bash",
+            "TaskStop"
+          ],
+          "task_id": "c401eebe00bc566867cb2e102d8cf195",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 2,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Bash",
+            "TaskStop"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 2,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "native_frames": [
+            {
+              "name": "Bash",
+              "denied": false,
+              "input": {
+                "command": {
+                  "type": "str",
+                  "chars": 57
+                },
+                "run_in_background": true
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "agent_type",
+                  "cli_env",
+                  "conversation_id",
+                  "env_vars",
+                  "generate_timestamp_ms",
+                  "localhub_task_deadline_ms",
+                  "security_risk_text_v1",
+                  "unique_key",
+                  "workspace_tool_result_dir"
+                ]
+              },
+              "lark_option_present": true
+            },
+            {
+              "name": "TaskStop",
+              "denied": false,
+              "input": {
+                "task_id": "bash_c49379"
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "agent_type",
+                  "cli_env",
+                  "conversation_id",
+                  "env_vars",
+                  "generate_timestamp_ms",
+                  "localhub_task_deadline_ms",
+                  "security_risk_text_v1",
+                  "unique_key",
+                  "workspace_tool_result_dir"
+                ]
+              },
+              "lark_option_present": false
+            }
+          ],
+          "denied_names": [],
+          "actual_results_and_errors_exact": true,
+          "forwarded_args_exact": true
+        }
+      ]
+    },
+    "native-glob": {
+      "phase": "native",
+      "case": "glob",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "catalog": "augmented",
+      "tools": 35,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            9.637,
+            5.423
+          ],
+          "client_seconds": 0.001,
+          "executions": 1,
+          "idempotent_replays": 1,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 15.089,
+          "tool_names": [
+            "Glob"
+          ],
+          "task_id": "888ea57b5c2cbf67721418f0647a9e11",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Glob"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 1,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "native_frames": [
+            {
+              "name": "Glob",
+              "denied": false,
+              "input": {
+                "path": "fixture",
+                "pattern": "**/*.go"
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "agent_type",
+                  "cli_env",
+                  "conversation_id",
+                  "env_vars",
+                  "generate_timestamp_ms",
+                  "glob_config",
+                  "localhub_task_deadline_ms",
+                  "security_risk_text_v1",
+                  "unique_key",
+                  "workspace_tool_result_dir"
+                ],
+                "glob_config": {
+                  "follow_directory_symlinks": false,
+                  "glob_protocol_v2": "1",
+                  "include_directories": false,
+                  "include_symlinks": false,
+                  "max_results": 500,
+                  "sort_by": "modified",
+                  "sort_order": "asc",
+                  "timeout_ms": 60000
+                }
+              },
+              "lark_option_present": false
+            }
+          ],
+          "denied_names": [],
+          "actual_results_and_errors_exact": true,
+          "forwarded_args_exact": true
+        }
+      ]
+    },
+    "native-background_stop": {
+      "phase": "native",
+      "case": "background_stop",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "catalog": "real",
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            9.709,
+            5.56,
+            6.789
+          ],
+          "client_seconds": 0.006,
+          "executions": 2,
+          "idempotent_replays": 2,
+          "task_stop_key": "task_id",
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 22.126,
+          "tool_names": [
+            "Bash",
+            "TaskStop"
+          ],
+          "task_id": "32ba6738aca21ffa958c10f4419385d4",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 2,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Bash",
+            "TaskStop"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 2,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "native_frames": [
+            {
+              "name": "Bash",
+              "denied": false,
+              "input": {
+                "command": {
+                  "type": "str",
+                  "chars": 57
+                },
+                "run_in_background": true,
+                "sandbox_permissions": "use_default"
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "agent_type",
+                  "cli_env",
+                  "conversation_id",
+                  "env_vars",
+                  "generate_timestamp_ms",
+                  "localhub_task_deadline_ms",
+                  "security_risk_text_v1",
+                  "unique_key",
+                  "workspace_tool_result_dir"
+                ]
+              },
+              "lark_option_present": true
+            },
+            {
+              "name": "TaskStop",
+              "denied": false,
+              "input": {
+                "task_id": "bash_7e68ae"
+              },
+              "option": {
+                "raw_type": "dict",
+                "keys": [
+                  "agent_id",
+                  "agent_type",
+                  "cli_env",
+                  "conversation_id",
+                  "env_vars",
+                  "generate_timestamp_ms",
+                  "localhub_task_deadline_ms",
+                  "security_risk_text_v1",
+                  "unique_key",
+                  "workspace_tool_result_dir"
+                ]
+              },
+              "lark_option_present": false
+            }
+          ],
+          "denied_names": [],
+          "actual_results_and_errors_exact": true,
+          "forwarded_args_exact": true
+        }
+      ]
+    }
+  },
+  "own_tasks": [
+    {
+      "id": "68b62d5d0f830c69d46772f2d51cd5d5",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "32ba6738aca21ffa958c10f4419385d4",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "f827e5b897473c1388c205e814f50e1b",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "cd90df83eab7c89b1bc93563029c5113",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "d7a123c9535c88496d6b62cfff10c998",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "888ea57b5c2cbf67721418f0647a9e11",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "5965696e0456e568c7b9bb005bd9caac",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": "task_expired"
+    },
+    {
+      "id": "fff21f7771e09aac203a5211aec8140e",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "5a06ac604653ebdd043167bfa1409c1a",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "c401eebe00bc566867cb2e102d8cf195",
+      "isolated": false,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "a30d696b803386ab7228c6af445e8bff",
+      "isolated": false,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    }
+  ],
+  "cache": {
+    "catalogs": 1,
+    "holders": 0,
+    "retiring": 0
+  },
+  "deployment": {
+    "version": "0.3.21",
+    "previous_version": "0.3.20",
+    "sha256": "c69d50f99a5cf337689ee06456ddf5d7eb4c77b17cfb27108b5a5d3d3c41fc70",
+    "helper_sha256": "184dab96d3d40940698accd2218668ee8ab3717a22fbd51136b3624b8c8afa2c",
+    "models_unchanged": true,
+    "container_unchanged": true,
+    "config_semantics_unchanged": true,
+    "auth_flags_unchanged": true,
+    "tasks_before": {
+      "active": 0,
+      "cleanup_pending": 0
+    },
+    "tasks_after": {
+      "active": 0,
+      "cleanup_pending": 0
+    }
+  },
+  "invariants": {
+    "own_tasks_done": true,
+    "own_tasks_cleaned": true,
+    "one_generation_per_own_task": true,
+    "isolated_device_distinct": true,
+    "isolated_port_closed": true,
+    "plugin_sha_matches": true,
+    "helper_sha_matches": true,
+    "config_semantics_unchanged": true,
+    "auth_flags_unchanged": true
+  }
+}

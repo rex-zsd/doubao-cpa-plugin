@@ -6,7 +6,7 @@
 
 豆包 Work 实际运行的是 agent，插件把它的对话和真实连接器调用转换成 LLM API。系统消息优先级、温度、token 预算等底层模型语义无法因此获得，见下文的参数表。
 
-当前版本为 0.3.21，已在官方 CPA v8.0.13 上实测，见[连接器隔离与原生编辑验收](docs/NATIVE_EXPANSION_CN.md)。
+当前版本为 0.3.21，已在官方 CPA v8.0.13 上实测，见[更多原生工具转发验收](docs/NATIVE_MORE_TOOLS_CN.md)。
 
 支持 CPA 的 OAuth 模型别名，可让现有 Claude 客户端用兼容模型名调用豆包 Work，配置和执行语义见 [模型别名说明](docs/MODEL_ALIASES_CN.md)。
 
@@ -100,7 +100,7 @@ Codex 的 Responses Lite 请求可以直接使用，包括 `additional_tools`、
 
 客户端函数通过真实 MCP 连接器提供给 Work。插件收到标准的 `tool_calls` / `function_call` 后交给客户端执行。客户端需要把原始 assistant 调用和 tool 结果一起回传，插件再把结果交回**原来的 Work 任务**。本地 shell、读写文件等未声明的工具不会被执行。
 
-可设置 `native_tools: true`，让兼容的单次调用或依赖链直接走 Work 原生工具通道，减少 `tool_search` 和 MCP 包装。0.3.21 转发客户端明确声明的同名 `Read`（绝对路径、已知代码/文本类型，包括 `.txt/.go/.py/.js/.ts/.md/.json` 等，可选 offset/limit，offset 从 1 开始）、文本 `Write/Edit`、`NotebookEdit`、`Glob`、`Grep`、`Bash`（命令和毫秒 timeout 原样保留；客户端 schema 声明 `run_in_background` 时也可后台运行）以及 `TaskOutput/TaskStop`。Write 保留 file_path/content；Edit 保留 file_path、非空 old_string、new_string 和可选 replace_all；NotebookEdit 要求绝对 notebook_path；Glob/Grep 要求非空 pattern，path 省略或为绝对路径。执行和审批仍在 HTTP 客户端环境，由客户端返回真实结果；插件和 Work 不代替客户端执行。调用须通过客户端原始 JSON Schema 校验；只移除 Work 的文本缩略图默认值和默认沙箱选择字段，保留原始 native ID/input 供回传。Work 独有的 Glob 排序、数量上限、目录/符号链接选项，以及 Grep `include`、TaskOutput `shell_id` 等别名不做改写，这类调用继续使用 MCP；客户端没有声明的同名工具（例如 Claude Code 没有的 Glob/Grep/TaskOutput）同样走 MCP。PDF、媒体、未知 Read 文件类型、提权（参数或 Work 调用选项中的沙箱逃逸）和其他不兼容参数继续使用 MCP。
+可设置 `native_tools: true`，让兼容的单次调用或依赖链直接走 Work 原生工具通道，减少 `tool_search` 和 MCP 包装。0.3.21 转发客户端明确声明的同名 `Read`（绝对路径、已知代码/文本类型，包括 `.txt/.go/.py/.js/.ts/.md/.json` 等，可选 offset/limit，offset 从 1 开始）、文本 `Write/Edit`、`NotebookEdit`、`Glob`、`Grep`、`Bash`（命令和毫秒 timeout 原样保留；客户端 schema 声明 `run_in_background` 时也可后台运行）以及 `TaskOutput/TaskStop`。Write 保留 file_path/content；Edit 保留 file_path、非空 old_string、new_string 和可选 replace_all；NotebookEdit 要求绝对 notebook_path；Glob/Grep 要求非空 pattern，path 省略或为绝对路径。执行和审批仍在 HTTP 客户端环境，由客户端返回真实结果；插件和 Work 不代替客户端执行。调用须通过客户端原始 JSON Schema 校验；只移除 Work 的文本缩略图默认值和默认沙箱选择字段，保留原始 native ID/input 供回传。调用参数中 Work 独有的 Glob 排序、数量上限、目录/符号链接选项，以及 Grep `include`、TaskOutput `shell_id` 等别名不做改写，这类调用继续使用 MCP；Work 在 Glob 调用选项里附带的 glob_config 是固定默认值，不代表模型意图，不读取也不转发。客户端没有声明的同名工具（例如实测 Claude Code 工具目录中没有的 Glob/Grep/TaskOutput）同样走 MCP。PDF、媒体、未知 Read 文件类型、提权（参数或 Work 调用选项中的沙箱逃逸）和其他不兼容参数继续使用 MCP。
 
 完整工具目录、说明、schema 和历史保持不变；允许并行时，多个独立调用优先使用已有 MCP 批入口。新增原生说明导致提示词超限、但原 MCP 提示词可用时，整项任务退回 MCP，不截断上下文。路由策略随任务检查点保存，切换配置或重启后，等待中的调用仍按原协议恢复。默认关闭；修改配置请通过插件版本热更新或正常停用后重载。该开关改善兼容调用的路由开销，不把 Work Agent 变成底层模型 API，也不保证固定加速比例。
 
