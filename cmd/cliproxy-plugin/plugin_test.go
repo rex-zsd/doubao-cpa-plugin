@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -12,6 +13,47 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func TestExecutorPayloadUsesResolvedModelAndPreservesRequest(t *testing.T) {
+	payload := []byte(`{"model":"claude-opus-5-5","messages":[{"role":"user","content":"keep the full history"}],"reasoning_effort":7,"parallel_tool_calls":true,"tools":[{"type":"function","function":{"name":"Bash","description":"Keep this exact description.","parameters":{"type":"object","properties":{"count":{"type":"integer","default":9007199254740993}}}}}]}`)
+	out, err := executorPayload(request{Model: "doubao-orange-5.5", Payload: payload})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var before, after map[string]json.RawMessage
+	if json.Unmarshal(payload, &before) != nil || json.Unmarshal(out, &after) != nil {
+		t.Fatal("invalid normalized payload")
+	}
+	if string(after["model"]) != `"doubao-orange-5.5"` {
+		t.Fatal("client alias reached the upstream model selector", string(after["model"]))
+	}
+	delete(before, "model")
+	delete(after, "model")
+	if !reflect.DeepEqual(before, after) {
+		t.Fatal("alias resolution changed history, reasoning or tool definitions")
+	}
+	for _, req := range []request{{Payload: payload}, {Model: "claude-opus-5-5", Payload: payload}, {Model: "doubao-orange-5.5", Payload: []byte("not json")}, {Model: "doubao-orange-5.5", Payload: []byte("null")}} {
+		out, err := executorPayload(req)
+		if err != nil || !bytes.Equal(out, req.Payload) {
+			t.Fatal("unmapped or malformed payload changed", err)
+		}
+	}
+}
+
+func TestExecutorPayloadResolvesResponsesAliasAfterNormalization(t *testing.T) {
+	out, err := executorPayload(request{SourceFormat: "openai-response", Model: "doubao-orange-5.5", Payload: []byte(`{"model":"claude-opus-5-5","input":"keep this input","reasoning":{"effort":"max"}}`)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		Model    string
+		Messages []struct{ Role, Content string }
+		Effort   any `json:"reasoning_effort"`
+	}
+	if json.Unmarshal(out, &result) != nil || result.Model != "doubao-orange-5.5" || len(result.Messages) != 1 || result.Messages[0].Content != "keep this input" || result.Effort != "max" {
+		t.Fatal("Responses alias normalization lost model, input or effort", string(out))
+	}
+}
+
 func TestOfficialHostUsesNativeTransportByDefault(t *testing.T) {
 	var cfg config
 	if err := yaml.Unmarshal([]byte("state_dir: /state\nhelper_path: /bin/doubao-helper\n"), &cfg); err != nil {
@@ -19,6 +61,23 @@ func TestOfficialHostUsesNativeTransportByDefault(t *testing.T) {
 	}
 	if options := serviceConfig(cfg); options.Transport != nil || options.StateDir != "/state" || options.HelperPath != "/bin/doubao-helper" {
 		t.Fatalf("default config must not depend on the host HTTP bridge: %+v", options)
+	}
+}
+
+func TestNativeToolsConfigIsExplicitAndKeepsConnectorReuse(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		var cfg config
+		data := "state_dir: /state\nhelper_path: /bin/doubao-helper\n"
+		if enabled {
+			data += "native_tools: true\n"
+		}
+		if err := yaml.Unmarshal([]byte(data), &cfg); err != nil {
+			t.Fatal(err)
+		}
+		options := serviceConfig(cfg)
+		if options.NativeTools != enabled || !options.ConnectorReuse || options.Transport != nil {
+			t.Fatal("native routing changed transport, cache or opt-in semantics")
+		}
 	}
 }
 

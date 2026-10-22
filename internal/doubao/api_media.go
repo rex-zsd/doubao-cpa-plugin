@@ -352,7 +352,7 @@ func (c *Client) nativeResultContent(ctx context.Context, value string) ([]any, 
 	return append(result, notes...), nil
 }
 
-func (c *Client) nativeToolReply(ctx context.Context, native object, value string, batch bool) (object, error) {
+func (c *Client) nativeToolReply(ctx context.Context, native object, value string, batch, isError bool) (object, error) {
 	content := []any{}
 	if batch {
 		rows := array(field(parsed(value), "results"))
@@ -368,7 +368,7 @@ func (c *Client) nativeToolReply(ctx context.Context, native object, value strin
 			content = []any{object{"type": "text", "text": value}}
 		} else {
 			for _, row := range rows {
-				content = append(content, object{"type": "text", "text": fmt.Sprintf("Function %s, batch index %v:", textValue(field(row, "name")), field(row, "index"))})
+				content = append(content, object{"type": "text", "text": fmt.Sprintf("Function %s, batch index %v, isError=%t:", textValue(field(row, "name")), field(row, "index"), field(row, "isError") == true)})
 				parts, err := c.nativeResultContent(ctx, textValue(field(row, "result")))
 				if err != nil {
 					return nil, err
@@ -386,5 +386,5 @@ func (c *Client) nativeToolReply(ctx context.Context, native object, value strin
 			return nil, err
 		}
 	}
-	return object{"id": native["id"], "name": native["name"], "tool_input": native["input"], "raw_result": jsonText(object{"content": content, "isError": false})}, nil
+	return object{"id": native["id"], "name": native["name"], "tool_input": native["input"], "raw_result": jsonText(object{"content": content, "isError": isError})}, nil
 }

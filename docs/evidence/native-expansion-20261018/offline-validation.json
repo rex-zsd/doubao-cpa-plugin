@@ -1,0 +1,18 @@
+{
+  "source_commit": "f38d090",
+  "validation": "go test -race ./...",
+  "status": "passed",
+  "checks": {
+    "cold_create_does_not_block_other_catalog": true,
+    "availability_check_does_not_block_other_catalog": true,
+    "retirement_does_not_block_other_catalog": true,
+    "same_catalog_single_creation": true,
+    "waiting_context_cancel": true,
+    "uncertain_creation_not_repeated": true,
+    "active_lease_cleanup_and_restart": true,
+    "native_read_write_edit_exact_arguments": true,
+    "native_write_edit_result_error_and_replay": true,
+    "pending_read_write_edit_restart_without_new_generation": true,
+    "complete_prompt_fallback_without_truncation": true
+  }
+}

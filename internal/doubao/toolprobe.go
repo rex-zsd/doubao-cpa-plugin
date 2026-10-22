@@ -235,6 +235,7 @@ type toolProbe struct {
 	ignored                                           int
 	invoke                                            func(context.Context, string, object) (object, error)
 	forward                                           func(context.Context, object, object) (object, error)
+	uploadTiming                                      func(time.Time)
 }
 
 func ownedRelative(root, name string) (string, error) {
@@ -463,9 +464,13 @@ func (p *toolProbe) handle(ctx context.Context, frame object) error {
 	if err := saveJSON(p.journal, p.records); err != nil {
 		return err
 	}
+	uploadStarted := time.Now()
 	response, err := p.c.office(ctx, route, body)
 	if err != nil {
 		return err
+	}
+	if p.uploadTiming != nil {
+		p.uploadTiming(uploadStarted)
 	}
 	record["uploaded"], record["upload_response"] = true, response
 	if proof, ok := record["proof"].(map[string]any); ok {

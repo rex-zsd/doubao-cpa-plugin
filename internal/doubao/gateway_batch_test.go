@@ -1,6 +1,7 @@
 package doubao
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -24,13 +25,25 @@ func fakeBatchRunner(g *gateway, starts, uploads *atomic.Int32) func(*gatewayTur
 		for i := 0; i < 3; i++ {
 			calls = append(calls, object{"name": "client_nonce", "arguments": object{"challenge": fmt.Sprint(i)}})
 		}
-		result, err := g.forwardClientTool(turn.ctx, turn, object{"id": "native-batch", "name": "connector.call", "input": "native-input"}, object{"protocol_version": 1, "connector_id": "fixture-connector", "remote_tool_name": batchToolName, "raw_arguments": jsonText(object{"calls": calls})})
+		batchName := batchToolName
+		for _, route := range batchRoutes(turn.request) {
+			for _, tool := range route.tools {
+				if tool.Function.Name == "client_nonce" {
+					batchName = route.name
+				}
+			}
+		}
+		result, err := g.forwardClientTool(turn.ctx, turn, object{"id": "native-batch", "name": "connector.call", "input": "native-input"}, object{"protocol_version": 1, "connector_id": "fixture-connector", "remote_tool_name": batchName, "raw_arguments": jsonText(object{"calls": calls})})
 		if err != nil {
 			g.finish(turn, "", apiFail(502, "fixture", err.Error()))
 			return
 		}
 		uploads.Add(1)
 		content := array(field(parsed(result["raw_result"]), "content"))
+		if len(content) != 1 {
+			g.finish(turn, "", apiFail(502, "fixture", "batch did not return one result collection"))
+			return
+		}
 		g.finish(turn, textValue(field(content[0], "text")), nil)
 	}
 }
@@ -170,36 +183,67 @@ func TestBatchStreamingExposesAllIndexedCalls(t *testing.T) {
 	}
 }
 
-func TestOversizedBatchCatalogFallsBackToSingleCalls(t *testing.T) {
+func TestLargeParallelCatalogKeepsOriginalFunctionsAndSmallBatch(t *testing.T) {
 	req := toolRequest()
 	parallel := true
 	req.Parallel = &parallel
-	if !batchMode(req) || !strings.Contains(renderAPIPrompt(req, "connector", false), batchToolName) {
-		t.Fatal("a small parallel catalog was not batched")
+	if !batchMode(req) || compactBatchMode(req) {
+		t.Fatal("small catalog changed mode")
 	}
 	for i := 0; i < 10; i++ {
 		req.Tools = append(req.Tools, apiTool{Type: "function", Function: apiFunction{Name: fmt.Sprintf("lookup_%d", i), Description: strings.Repeat("x", 5000), Parameters: object{"type": "object", "properties": object{}}}})
 	}
-	if utf16Len(batchSchema(req.Tools)) <= batchSchemaLimit || batchMode(req) || strings.Contains(renderAPIPrompt(req, "connector", false), batchToolName) {
-		t.Fatal("an oversized catalog was batched")
+	if !batchMode(req) || !compactBatchMode(req) {
+		t.Fatal("large catalog lost batching")
+	}
+	catalog := toolCatalog(req)
+	if len(catalog) != len(req.Tools)+len(batchRoutes(req)) {
+		t.Fatal("original functions missing")
+	}
+	for i, tool := range req.Tools {
+		if field(catalog[i], "name") != tool.Function.Name || field(catalog[i], "description") != tool.Function.Description || field(catalog[i], "inputSchema") != jsonText(tool.Function.Parameters) {
+			t.Fatal("original definition changed")
+		}
+	}
+	if utf16Len(textValue(field(catalog[len(catalog)-1], "inputSchema"))) >= batchSchemaLimit {
+		t.Fatal("batch envelope duplicates full schema")
+	}
+	prompt := renderAPIPrompt(req, "connector", false)
+	if !strings.Contains(prompt, batchToolName) || !strings.Contains(prompt, "__client_nonce") || !strings.Contains(prompt, "__lookup_9") {
+		t.Fatal("function discovery routes missing")
 	}
 	g, server := testGateway(t)
-	var starts, results atomic.Int32
-	var refused atomic.Bool
-	single := fakeToolRunner(g, &starts, &results)
-	g.run = func(turn *gatewayTurn) {
-		g.mu.Lock()
-		turn.connector = "fixture-connector"
-		g.mu.Unlock()
-		result, err := g.forwardClientTool(turn.ctx, turn, object{"id": "native-batch", "name": "connector.call", "input": "native-input"}, object{"protocol_version": 1, "connector_id": "fixture-connector", "remote_tool_name": batchToolName, "raw_arguments": `{"calls":[{"name":"client_nonce","arguments":{"challenge":"unit"}}]}`})
-		refused.Store(err == nil && result["isError"] == true)
-		single(turn)
-	}
+	var starts, uploads atomic.Int32
+	g.run = fakeBatchRunner(g, &starts, &uploads)
 	code, first := postGateway(t, server, req, "")
-	if code != 200 || !refused.Load() {
-		t.Fatal("the batch tool was offered", code, first)
+	if code != 200 || len(returnedMessage(t, first).ToolCalls) != 3 {
+		t.Fatal("large batch was not exposed atomically", code)
 	}
-	if calls := returnedMessage(t, first).ToolCalls; len(calls) != 1 || calls[0].Function.Name != "client_nonce" {
-		t.Fatal("the single call was not exposed", first)
+	parallel = false
+	if batchMode(req) || len(toolCatalog(req)) != len(req.Tools) {
+		t.Fatal("explicitly disabled parallel execution enabled")
+	}
+}
+
+func TestInvalidBatchArgumentsNeverExposePartialCalls(t *testing.T) {
+	g, _ := testGateway(t)
+	req := toolRequest()
+	turn := &gatewayTurn{request: req}
+	result, err := g.forwardClientBatch(context.Background(), turn, object{"id": "n"}, object{"calls": []any{
+		object{"name": "client_nonce", "arguments": object{"challenge": "valid"}},
+		object{"name": "client_nonce", "arguments": object{"challenge": 42}},
+	}}, req)
+	if err != nil || result["isError"] != true || len(g.calls) != 0 || turn.forwarded != 0 || turn.denied != 1 {
+		t.Fatal("invalid arguments escaped atomic validation", err, result)
+	}
+}
+
+func TestBatchEnvelopeNeverShadowsClientFunction(t *testing.T) {
+	req := toolRequest()
+	parallel := true
+	req.Parallel = &parallel
+	req.Tools[0].Function.Name = batchToolName
+	if batchMode(req) || len(toolCatalog(req)) != 1 {
+		t.Fatal("client function was shadowed")
 	}
 }

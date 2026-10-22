@@ -1,0 +1,2004 @@
+{
+  "version": "0.3.19",
+  "benchmarks": {
+    "baseline18-read_once": {
+      "n": 2,
+      "seconds": [
+        30.243,
+        28.08
+      ],
+      "median_seconds": 29.161,
+      "first_call_seconds": [
+        22.948,
+        20.774
+      ],
+      "all_actual_answers_ok": true,
+      "full_32_tools_retained": true
+    },
+    "baseline18-bash_success": {
+      "n": 2,
+      "seconds": [
+        22.152,
+        31.266
+      ],
+      "median_seconds": 26.709,
+      "first_call_seconds": [
+        13.593,
+        24.188
+      ],
+      "all_actual_answers_ok": true,
+      "full_32_tools_retained": true
+    },
+    "native-production-read_once": {
+      "n": 2,
+      "seconds": [
+        29.983,
+        18.433
+      ],
+      "median_seconds": 24.208,
+      "first_call_seconds": [
+        19.629,
+        10.492
+      ],
+      "all_actual_answers_ok": true,
+      "full_32_tools_retained": true,
+      "median_reduction_percent": 17.0
+    },
+    "native-production-bash_success": {
+      "n": 2,
+      "seconds": [
+        23.683,
+        23.055
+      ],
+      "median_seconds": 23.369,
+      "first_call_seconds": [
+        14.862,
+        15.902
+      ],
+      "all_actual_answers_ok": true,
+      "full_32_tools_retained": true,
+      "median_reduction_percent": 12.5
+    }
+  },
+  "invariants": {
+    "models_unchanged": true,
+    "container_unchanged": true,
+    "config_only_native_tools": true,
+    "plugin_sha_verified": true,
+    "helper_sha_verified": true,
+    "isolated_device_distinct": true,
+    "isolated_helper_stopped": true,
+    "isolated_port_closed": true
+  },
+  "task_counts": {
+    "production_active": 0,
+    "production_cleanup_pending": 0,
+    "isolated_active": 0,
+    "isolated_cleanup_pending": 0
+  },
+  "connector_pool": {
+    "entries": 3,
+    "holders": 0,
+    "retiring": 0
+  },
+  "catalog_checks": [
+    {
+      "task_id": "1085042af1df677ff050bc3b53bc7dc3",
+      "tools": 32,
+      "full_definition_preserved": true,
+      "effort": 7,
+      "cached_lease": true,
+      "released": true
+    },
+    {
+      "task_id": "274a19ad4d36ea56818308c5520cf93e",
+      "tools": 32,
+      "full_definition_preserved": true,
+      "effort": 7,
+      "cached_lease": true,
+      "released": true
+    },
+    {
+      "task_id": "33ca90ac429723d00412d3bf46f2aa00",
+      "tools": 32,
+      "full_definition_preserved": true,
+      "effort": 7,
+      "cached_lease": true,
+      "released": true
+    },
+    {
+      "task_id": "617c1fa547bac93800a6df15260a97eb",
+      "tools": 32,
+      "full_definition_preserved": true,
+      "effort": 7,
+      "cached_lease": true,
+      "released": true
+    },
+    {
+      "task_id": "6b27a4198e63c1349e8639a1182eeb42",
+      "tools": 32,
+      "full_definition_preserved": true,
+      "effort": 7,
+      "cached_lease": true,
+      "released": true
+    },
+    {
+      "task_id": "8918c33b6f10d01fbcb2f253af4cde1f",
+      "tools": 32,
+      "full_definition_preserved": true,
+      "effort": 7,
+      "cached_lease": true,
+      "released": true
+    },
+    {
+      "task_id": "9121f2dd75b83b03fe06f3f343965db1",
+      "tools": 32,
+      "full_definition_preserved": true,
+      "effort": 7,
+      "cached_lease": true,
+      "released": true
+    },
+    {
+      "task_id": "928067b674d724d4c2cb1e34d9dfa1ed",
+      "tools": 32,
+      "full_definition_preserved": true,
+      "effort": 7,
+      "cached_lease": true,
+      "released": true
+    },
+    {
+      "task_id": "9d26708609a9b296704ef3c3ad6ea097",
+      "tools": 32,
+      "full_definition_preserved": true,
+      "effort": 7,
+      "cached_lease": true,
+      "released": true
+    },
+    {
+      "task_id": "d91c4aa8107297285268df09c0dae0dc",
+      "tools": 2,
+      "full_definition_preserved": true,
+      "effort": 7,
+      "cached_lease": true,
+      "released": true
+    },
+    {
+      "task_id": "e912e7a50bd22b8950a57acc0a0ba062",
+      "tools": 32,
+      "full_definition_preserved": true,
+      "effort": 7,
+      "cached_lease": true,
+      "released": true
+    },
+    {
+      "task_id": "f5db17b4c09bbe099143dcdc3c59490a",
+      "tools": 32,
+      "full_definition_preserved": true,
+      "effort": 7,
+      "cached_lease": true,
+      "released": true
+    }
+  ],
+  "timings": {
+    "274a19ad4d36ea56818308c5520cf93e": [
+      {
+        "stage": "task_start",
+        "elapsed_ms": 7,
+        "duration_ms": 7
+      },
+      {
+        "stage": "connector_cache_miss",
+        "elapsed_ms": 773,
+        "duration_ms": -1
+      },
+      {
+        "stage": "connector_ready",
+        "elapsed_ms": 773,
+        "duration_ms": 764
+      },
+      {
+        "stage": "upstream_ack_received",
+        "elapsed_ms": 2082,
+        "duration_ms": 1274
+      },
+      {
+        "stage": "upstream_timeout_control",
+        "elapsed_ms": 2160,
+        "duration_ms": 1352
+      },
+      {
+        "stage": "upstream_first_chunk",
+        "elapsed_ms": 2947,
+        "duration_ms": 2139
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 3305,
+        "duration_ms": 270
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 4329,
+        "duration_ms": 259
+      },
+      {
+        "stage": "tool_call_ready",
+        "elapsed_ms": 22842,
+        "duration_ms": 22842
+      },
+      {
+        "stage": "client_result_received",
+        "elapsed_ms": 22935,
+        "duration_ms": 93
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 23213,
+        "duration_ms": 273
+      },
+      {
+        "stage": "upstream_stream_finished",
+        "elapsed_ms": 29392,
+        "duration_ms": 28584
+      },
+      {
+        "stage": "final_readback_done",
+        "elapsed_ms": 30088,
+        "duration_ms": 695
+      },
+      {
+        "stage": "upstream_complete",
+        "elapsed_ms": 30109,
+        "duration_ms": 30109
+      },
+      {
+        "stage": "final_ready",
+        "elapsed_ms": 30121,
+        "duration_ms": 7193
+      },
+      {
+        "stage": "cleanup_start",
+        "elapsed_ms": 30122,
+        "duration_ms": 0
+      },
+      {
+        "stage": "connector_lease_released",
+        "elapsed_ms": 30134,
+        "duration_ms": -1
+      },
+      {
+        "stage": "cleanup_done",
+        "elapsed_ms": 30134,
+        "duration_ms": 11
+      }
+    ],
+    "8918c33b6f10d01fbcb2f253af4cde1f": [
+      {
+        "stage": "task_start",
+        "elapsed_ms": 13,
+        "duration_ms": 13
+      },
+      {
+        "stage": "connector_cache_hit",
+        "elapsed_ms": 394,
+        "duration_ms": -1
+      },
+      {
+        "stage": "connector_ready",
+        "elapsed_ms": 394,
+        "duration_ms": 379
+      },
+      {
+        "stage": "upstream_ack_received",
+        "elapsed_ms": 1732,
+        "duration_ms": 1310
+      },
+      {
+        "stage": "upstream_timeout_control",
+        "elapsed_ms": 1829,
+        "duration_ms": 1407
+      },
+      {
+        "stage": "upstream_first_chunk",
+        "elapsed_ms": 2632,
+        "duration_ms": 2210
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 2933,
+        "duration_ms": 250
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 3984,
+        "duration_ms": 268
+      },
+      {
+        "stage": "tool_call_ready",
+        "elapsed_ms": 20700,
+        "duration_ms": 20700
+      },
+      {
+        "stage": "client_result_received",
+        "elapsed_ms": 20760,
+        "duration_ms": 59
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 21042,
+        "duration_ms": 278
+      },
+      {
+        "stage": "upstream_stream_finished",
+        "elapsed_ms": 27327,
+        "duration_ms": 26906
+      },
+      {
+        "stage": "final_readback_done",
+        "elapsed_ms": 27953,
+        "duration_ms": 626
+      },
+      {
+        "stage": "upstream_complete",
+        "elapsed_ms": 27969,
+        "duration_ms": 27969
+      },
+      {
+        "stage": "final_ready",
+        "elapsed_ms": 27982,
+        "duration_ms": 7228
+      },
+      {
+        "stage": "cleanup_start",
+        "elapsed_ms": 27982,
+        "duration_ms": 0
+      },
+      {
+        "stage": "connector_lease_released",
+        "elapsed_ms": 27996,
+        "duration_ms": -1
+      },
+      {
+        "stage": "cleanup_done",
+        "elapsed_ms": 27996,
+        "duration_ms": 13
+      }
+    ],
+    "f5db17b4c09bbe099143dcdc3c59490a": [
+      {
+        "stage": "task_start",
+        "elapsed_ms": 15,
+        "duration_ms": 15
+      },
+      {
+        "stage": "connector_cache_hit",
+        "elapsed_ms": 417,
+        "duration_ms": -1
+      },
+      {
+        "stage": "connector_ready",
+        "elapsed_ms": 417,
+        "duration_ms": 400
+      },
+      {
+        "stage": "upstream_ack_received",
+        "elapsed_ms": 1311,
+        "duration_ms": 848
+      },
+      {
+        "stage": "upstream_timeout_control",
+        "elapsed_ms": 1408,
+        "duration_ms": 944
+      },
+      {
+        "stage": "upstream_first_chunk",
+        "elapsed_ms": 2198,
+        "duration_ms": 1735
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 2521,
+        "duration_ms": 258
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 3546,
+        "duration_ms": 260
+      },
+      {
+        "stage": "tool_call_ready",
+        "elapsed_ms": 13480,
+        "duration_ms": 13480
+      },
+      {
+        "stage": "client_result_received",
+        "elapsed_ms": 13649,
+        "duration_ms": 168
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 13957,
+        "duration_ms": 301
+      },
+      {
+        "stage": "upstream_stream_finished",
+        "elapsed_ms": 21405,
+        "duration_ms": 20941
+      },
+      {
+        "stage": "final_readback_done",
+        "elapsed_ms": 22033,
+        "duration_ms": 628
+      },
+      {
+        "stage": "upstream_complete",
+        "elapsed_ms": 22040,
+        "duration_ms": 22040
+      },
+      {
+        "stage": "final_ready",
+        "elapsed_ms": 22047,
+        "duration_ms": 8406
+      },
+      {
+        "stage": "cleanup_start",
+        "elapsed_ms": 22047,
+        "duration_ms": 0
+      },
+      {
+        "stage": "connector_lease_released",
+        "elapsed_ms": 22066,
+        "duration_ms": -1
+      },
+      {
+        "stage": "cleanup_done",
+        "elapsed_ms": 22066,
+        "duration_ms": 19
+      }
+    ],
+    "6b27a4198e63c1349e8639a1182eeb42": [
+      {
+        "stage": "task_start",
+        "elapsed_ms": 6,
+        "duration_ms": 6
+      },
+      {
+        "stage": "connector_cache_hit",
+        "elapsed_ms": 422,
+        "duration_ms": -1
+      },
+      {
+        "stage": "connector_ready",
+        "elapsed_ms": 422,
+        "duration_ms": 413
+      },
+      {
+        "stage": "upstream_ack_received",
+        "elapsed_ms": 1394,
+        "duration_ms": 945
+      },
+      {
+        "stage": "upstream_timeout_control",
+        "elapsed_ms": 1470,
+        "duration_ms": 1021
+      },
+      {
+        "stage": "upstream_first_chunk",
+        "elapsed_ms": 2133,
+        "duration_ms": 1684
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 2484,
+        "duration_ms": 262
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 3519,
+        "duration_ms": 262
+      },
+      {
+        "stage": "tool_call_ready",
+        "elapsed_ms": 24159,
+        "duration_ms": 24159
+      },
+      {
+        "stage": "client_result_received",
+        "elapsed_ms": 24285,
+        "duration_ms": 125
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 24553,
+        "duration_ms": 265
+      },
+      {
+        "stage": "upstream_stream_finished",
+        "elapsed_ms": 30580,
+        "duration_ms": 30131
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 30667,
+        "duration_ms": 265
+      },
+      {
+        "stage": "final_readback_done",
+        "elapsed_ms": 31189,
+        "duration_ms": 609
+      },
+      {
+        "stage": "upstream_complete",
+        "elapsed_ms": 31202,
+        "duration_ms": 31202
+      },
+      {
+        "stage": "final_ready",
+        "elapsed_ms": 31217,
+        "duration_ms": 6940
+      },
+      {
+        "stage": "cleanup_start",
+        "elapsed_ms": 31218,
+        "duration_ms": 0
+      },
+      {
+        "stage": "connector_lease_released",
+        "elapsed_ms": 31233,
+        "duration_ms": -1
+      },
+      {
+        "stage": "cleanup_done",
+        "elapsed_ms": 31234,
+        "duration_ms": 15
+      }
+    ],
+    "9121f2dd75b83b03fe06f3f343965db1": [
+      {
+        "stage": "task_start",
+        "elapsed_ms": 11,
+        "duration_ms": 11
+      },
+      {
+        "stage": "connector_cache_miss",
+        "elapsed_ms": 1072,
+        "duration_ms": -1
+      },
+      {
+        "stage": "connector_ready",
+        "elapsed_ms": 1072,
+        "duration_ms": 1058
+      },
+      {
+        "stage": "upstream_ack_received",
+        "elapsed_ms": 7672,
+        "duration_ms": 6569
+      },
+      {
+        "stage": "upstream_timeout_control",
+        "elapsed_ms": 8082,
+        "duration_ms": 6979
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 9653,
+        "duration_ms": 402
+      },
+      {
+        "stage": "upstream_first_chunk",
+        "elapsed_ms": 10541,
+        "duration_ms": 9439
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 10707,
+        "duration_ms": 408
+      },
+      {
+        "stage": "tool_call_ready",
+        "elapsed_ms": 19562,
+        "duration_ms": 19562
+      },
+      {
+        "stage": "client_result_received",
+        "elapsed_ms": 19674,
+        "duration_ms": 111
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 20089,
+        "duration_ms": 409
+      },
+      {
+        "stage": "upstream_stream_finished",
+        "elapsed_ms": 28904,
+        "duration_ms": 27802
+      },
+      {
+        "stage": "final_readback_done",
+        "elapsed_ms": 29896,
+        "duration_ms": 991
+      },
+      {
+        "stage": "upstream_complete",
+        "elapsed_ms": 29906,
+        "duration_ms": 29906
+      },
+      {
+        "stage": "final_ready",
+        "elapsed_ms": 29914,
+        "duration_ms": 10250
+      },
+      {
+        "stage": "cleanup_start",
+        "elapsed_ms": 29915,
+        "duration_ms": 0
+      },
+      {
+        "stage": "connector_lease_released",
+        "elapsed_ms": 29930,
+        "duration_ms": -1
+      },
+      {
+        "stage": "cleanup_done",
+        "elapsed_ms": 29930,
+        "duration_ms": 15
+      }
+    ],
+    "e912e7a50bd22b8950a57acc0a0ba062": [
+      {
+        "stage": "task_start",
+        "elapsed_ms": 7,
+        "duration_ms": 7
+      },
+      {
+        "stage": "connector_cache_hit",
+        "elapsed_ms": 696,
+        "duration_ms": -1
+      },
+      {
+        "stage": "connector_ready",
+        "elapsed_ms": 696,
+        "duration_ms": 687
+      },
+      {
+        "stage": "upstream_ack_received",
+        "elapsed_ms": 3418,
+        "duration_ms": 2692
+      },
+      {
+        "stage": "upstream_timeout_control",
+        "elapsed_ms": 3515,
+        "duration_ms": 2789
+      },
+      {
+        "stage": "upstream_first_chunk",
+        "elapsed_ms": 4154,
+        "duration_ms": 3428
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 4614,
+        "duration_ms": 400
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 5706,
+        "duration_ms": 458
+      },
+      {
+        "stage": "tool_call_ready",
+        "elapsed_ms": 10467,
+        "duration_ms": 10467
+      },
+      {
+        "stage": "client_result_received",
+        "elapsed_ms": 10522,
+        "duration_ms": 54
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 10928,
+        "duration_ms": 401
+      },
+      {
+        "stage": "upstream_stream_finished",
+        "elapsed_ms": 17561,
+        "duration_ms": 16835
+      },
+      {
+        "stage": "final_readback_done",
+        "elapsed_ms": 18381,
+        "duration_ms": 820
+      },
+      {
+        "stage": "upstream_complete",
+        "elapsed_ms": 18397,
+        "duration_ms": 18397
+      },
+      {
+        "stage": "final_ready",
+        "elapsed_ms": 18404,
+        "duration_ms": 7888
+      },
+      {
+        "stage": "cleanup_start",
+        "elapsed_ms": 18405,
+        "duration_ms": 0
+      },
+      {
+        "stage": "connector_lease_released",
+        "elapsed_ms": 18426,
+        "duration_ms": -1
+      },
+      {
+        "stage": "cleanup_done",
+        "elapsed_ms": 18427,
+        "duration_ms": 22
+      }
+    ],
+    "928067b674d724d4c2cb1e34d9dfa1ed": [
+      {
+        "stage": "task_start",
+        "elapsed_ms": 7,
+        "duration_ms": 7
+      },
+      {
+        "stage": "connector_cache_hit",
+        "elapsed_ms": 620,
+        "duration_ms": -1
+      },
+      {
+        "stage": "connector_ready",
+        "elapsed_ms": 620,
+        "duration_ms": 610
+      },
+      {
+        "stage": "upstream_ack_received",
+        "elapsed_ms": 4117,
+        "duration_ms": 3467
+      },
+      {
+        "stage": "upstream_timeout_control",
+        "elapsed_ms": 4221,
+        "duration_ms": 3571
+      },
+      {
+        "stage": "upstream_first_chunk",
+        "elapsed_ms": 4963,
+        "duration_ms": 4313
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 5475,
+        "duration_ms": 430
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 6470,
+        "duration_ms": 400
+      },
+      {
+        "stage": "tool_call_ready",
+        "elapsed_ms": 14799,
+        "duration_ms": 14799
+      },
+      {
+        "stage": "client_result_received",
+        "elapsed_ms": 14933,
+        "duration_ms": 133
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 15340,
+        "duration_ms": 404
+      },
+      {
+        "stage": "upstream_stream_finished",
+        "elapsed_ms": 22535,
+        "duration_ms": 21885
+      },
+      {
+        "stage": "final_readback_done",
+        "elapsed_ms": 23582,
+        "duration_ms": 1047
+      },
+      {
+        "stage": "upstream_complete",
+        "elapsed_ms": 23596,
+        "duration_ms": 23596
+      },
+      {
+        "stage": "final_ready",
+        "elapsed_ms": 23609,
+        "duration_ms": 8682
+      },
+      {
+        "stage": "cleanup_start",
+        "elapsed_ms": 23610,
+        "duration_ms": 0
+      },
+      {
+        "stage": "connector_lease_released",
+        "elapsed_ms": 23629,
+        "duration_ms": -1
+      },
+      {
+        "stage": "cleanup_done",
+        "elapsed_ms": 23629,
+        "duration_ms": 19
+      }
+    ],
+    "33ca90ac429723d00412d3bf46f2aa00": [
+      {
+        "stage": "task_start",
+        "elapsed_ms": 9,
+        "duration_ms": 9
+      },
+      {
+        "stage": "connector_cache_hit",
+        "elapsed_ms": 561,
+        "duration_ms": -1
+      },
+      {
+        "stage": "connector_ready",
+        "elapsed_ms": 561,
+        "duration_ms": 549
+      },
+      {
+        "stage": "upstream_ack_received",
+        "elapsed_ms": 2196,
+        "duration_ms": 1599
+      },
+      {
+        "stage": "upstream_timeout_control",
+        "elapsed_ms": 2324,
+        "duration_ms": 1727
+      },
+      {
+        "stage": "upstream_first_chunk",
+        "elapsed_ms": 3120,
+        "duration_ms": 2523
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 3505,
+        "duration_ms": 426
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 4570,
+        "duration_ms": 437
+      },
+      {
+        "stage": "tool_call_ready",
+        "elapsed_ms": 15853,
+        "duration_ms": 15853
+      },
+      {
+        "stage": "client_result_received",
+        "elapsed_ms": 15966,
+        "duration_ms": 112
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 16370,
+        "duration_ms": 400
+      },
+      {
+        "stage": "upstream_stream_finished",
+        "elapsed_ms": 21992,
+        "duration_ms": 21395
+      },
+      {
+        "stage": "final_readback_done",
+        "elapsed_ms": 22959,
+        "duration_ms": 967
+      },
+      {
+        "stage": "upstream_complete",
+        "elapsed_ms": 22991,
+        "duration_ms": 22991
+      },
+      {
+        "stage": "final_ready",
+        "elapsed_ms": 23002,
+        "duration_ms": 7043
+      },
+      {
+        "stage": "cleanup_start",
+        "elapsed_ms": 23003,
+        "duration_ms": 0
+      },
+      {
+        "stage": "connector_lease_released",
+        "elapsed_ms": 23030,
+        "duration_ms": -1
+      },
+      {
+        "stage": "cleanup_done",
+        "elapsed_ms": 23030,
+        "duration_ms": 27
+      }
+    ],
+    "617c1fa547bac93800a6df15260a97eb": [
+      {
+        "stage": "task_start",
+        "elapsed_ms": 19,
+        "duration_ms": 19
+      },
+      {
+        "stage": "connector_cache_miss",
+        "elapsed_ms": 1007,
+        "duration_ms": -1
+      },
+      {
+        "stage": "connector_ready",
+        "elapsed_ms": 1007,
+        "duration_ms": 976
+      },
+      {
+        "stage": "upstream_ack_received",
+        "elapsed_ms": 3333,
+        "duration_ms": 2269
+      },
+      {
+        "stage": "upstream_timeout_control",
+        "elapsed_ms": 3918,
+        "duration_ms": 2854
+      },
+      {
+        "stage": "upstream_first_chunk",
+        "elapsed_ms": 4143,
+        "duration_ms": 3079
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 4624,
+        "duration_ms": 379
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 5726,
+        "duration_ms": 454
+      },
+      {
+        "stage": "tool_call_ready",
+        "elapsed_ms": 18973,
+        "duration_ms": 18973
+      },
+      {
+        "stage": "client_result_received",
+        "elapsed_ms": 19032,
+        "duration_ms": 58
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 19431,
+        "duration_ms": 395
+      },
+      {
+        "stage": "upstream_stream_finished",
+        "elapsed_ms": 25830,
+        "duration_ms": 24766
+      },
+      {
+        "stage": "final_readback_done",
+        "elapsed_ms": 26650,
+        "duration_ms": 819
+      },
+      {
+        "stage": "upstream_complete",
+        "elapsed_ms": 26668,
+        "duration_ms": 26668
+      },
+      {
+        "stage": "final_ready",
+        "elapsed_ms": 26674,
+        "duration_ms": 7658
+      },
+      {
+        "stage": "cleanup_start",
+        "elapsed_ms": 26674,
+        "duration_ms": 0
+      },
+      {
+        "stage": "connector_lease_released",
+        "elapsed_ms": 26682,
+        "duration_ms": -1
+      },
+      {
+        "stage": "cleanup_done",
+        "elapsed_ms": 26682,
+        "duration_ms": 7
+      }
+    ],
+    "1085042af1df677ff050bc3b53bc7dc3": [
+      {
+        "stage": "task_start",
+        "elapsed_ms": 34,
+        "duration_ms": 34
+      },
+      {
+        "stage": "connector_cache_hit",
+        "elapsed_ms": 668,
+        "duration_ms": -1
+      },
+      {
+        "stage": "connector_ready",
+        "elapsed_ms": 668,
+        "duration_ms": 621
+      },
+      {
+        "stage": "upstream_ack_received",
+        "elapsed_ms": 2364,
+        "duration_ms": 1656
+      },
+      {
+        "stage": "upstream_timeout_control",
+        "elapsed_ms": 2524,
+        "duration_ms": 1816
+      },
+      {
+        "stage": "upstream_first_chunk",
+        "elapsed_ms": 3175,
+        "duration_ms": 2467
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 3683,
+        "duration_ms": 393
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 4728,
+        "duration_ms": 399
+      },
+      {
+        "stage": "tool_call_ready",
+        "elapsed_ms": 8682,
+        "duration_ms": 8682
+      },
+      {
+        "stage": "client_result_received",
+        "elapsed_ms": 8771,
+        "duration_ms": 89
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 9205,
+        "duration_ms": 429
+      },
+      {
+        "stage": "upstream_stream_finished",
+        "elapsed_ms": 14133,
+        "duration_ms": 13425
+      },
+      {
+        "stage": "final_readback_done",
+        "elapsed_ms": 14984,
+        "duration_ms": 851
+      },
+      {
+        "stage": "upstream_complete",
+        "elapsed_ms": 15024,
+        "duration_ms": 15024
+      },
+      {
+        "stage": "final_ready",
+        "elapsed_ms": 15032,
+        "duration_ms": 6277
+      },
+      {
+        "stage": "cleanup_start",
+        "elapsed_ms": 15032,
+        "duration_ms": 0
+      },
+      {
+        "stage": "connector_lease_released",
+        "elapsed_ms": 15043,
+        "duration_ms": -1
+      },
+      {
+        "stage": "cleanup_done",
+        "elapsed_ms": 15043,
+        "duration_ms": 10
+      }
+    ],
+    "d91c4aa8107297285268df09c0dae0dc": [
+      {
+        "stage": "task_start",
+        "elapsed_ms": 2,
+        "duration_ms": 2
+      },
+      {
+        "stage": "connector_cache_miss",
+        "elapsed_ms": 1036,
+        "duration_ms": -1
+      },
+      {
+        "stage": "connector_ready",
+        "elapsed_ms": 1036,
+        "duration_ms": 1033
+      },
+      {
+        "stage": "upstream_ack_received",
+        "elapsed_ms": 2489,
+        "duration_ms": 1445
+      },
+      {
+        "stage": "upstream_timeout_control",
+        "elapsed_ms": 2708,
+        "duration_ms": 1664
+      },
+      {
+        "stage": "upstream_first_chunk",
+        "elapsed_ms": 3296,
+        "duration_ms": 2252
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 3750,
+        "duration_ms": 396
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 4860,
+        "duration_ms": 469
+      },
+      {
+        "stage": "tool_call_ready",
+        "elapsed_ms": 24076,
+        "duration_ms": 24076
+      },
+      {
+        "stage": "client_result_received",
+        "elapsed_ms": 24092,
+        "duration_ms": 16
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 24527,
+        "duration_ms": 429
+      },
+      {
+        "stage": "upstream_stream_finished",
+        "elapsed_ms": 29569,
+        "duration_ms": 28525
+      },
+      {
+        "stage": "final_readback_done",
+        "elapsed_ms": 30359,
+        "duration_ms": 790
+      },
+      {
+        "stage": "upstream_complete",
+        "elapsed_ms": 30363,
+        "duration_ms": 30363
+      },
+      {
+        "stage": "final_ready",
+        "elapsed_ms": 30366,
+        "duration_ms": 6279
+      },
+      {
+        "stage": "cleanup_start",
+        "elapsed_ms": 30366,
+        "duration_ms": 0
+      },
+      {
+        "stage": "connector_lease_released",
+        "elapsed_ms": 30379,
+        "duration_ms": -1
+      },
+      {
+        "stage": "cleanup_done",
+        "elapsed_ms": 30379,
+        "duration_ms": 12
+      }
+    ],
+    "9d26708609a9b296704ef3c3ad6ea097": [
+      {
+        "stage": "task_start",
+        "elapsed_ms": 6,
+        "duration_ms": 6
+      },
+      {
+        "stage": "connector_cache_hit",
+        "elapsed_ms": 562,
+        "duration_ms": -1
+      },
+      {
+        "stage": "connector_ready",
+        "elapsed_ms": 562,
+        "duration_ms": 554
+      },
+      {
+        "stage": "upstream_ack_received",
+        "elapsed_ms": 2054,
+        "duration_ms": 1473
+      },
+      {
+        "stage": "upstream_timeout_control",
+        "elapsed_ms": 2358,
+        "duration_ms": 1777
+      },
+      {
+        "stage": "upstream_first_chunk",
+        "elapsed_ms": 2891,
+        "duration_ms": 2309
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 3322,
+        "duration_ms": 397
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 4386,
+        "duration_ms": 422
+      },
+      {
+        "stage": "tool_call_ready",
+        "elapsed_ms": 9645,
+        "duration_ms": 9645
+      },
+      {
+        "stage": "client_result_received",
+        "elapsed_ms": 9699,
+        "duration_ms": 54
+      },
+      {
+        "stage": "native_result_uploaded",
+        "elapsed_ms": 10117,
+        "duration_ms": 415
+      },
+      {
+        "stage": "upstream_stream_finished",
+        "elapsed_ms": 15693,
+        "duration_ms": 15111
+      },
+      {
+        "stage": "final_readback_done",
+        "elapsed_ms": 16529,
+        "duration_ms": 835
+      },
+      {
+        "stage": "upstream_complete",
+        "elapsed_ms": 16541,
+        "duration_ms": 16541
+      },
+      {
+        "stage": "final_ready",
+        "elapsed_ms": 16548,
+        "duration_ms": 6855
+      },
+      {
+        "stage": "cleanup_start",
+        "elapsed_ms": 16548,
+        "duration_ms": 0
+      },
+      {
+        "stage": "connector_lease_released",
+        "elapsed_ms": 16563,
+        "duration_ms": -1
+      },
+      {
+        "stage": "cleanup_done",
+        "elapsed_ms": 16563,
+        "duration_ms": 15
+      }
+    ]
+  },
+  "reports": [
+    {
+      "phase": "baseline18",
+      "case": "read_once",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "parallel_tool_calls": false,
+      "real_external_execution": true,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            22.948,
+            7.245
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.0,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 30.243,
+          "native_policy": false,
+          "task_id": "274a19ad4d36ea56818308c5520cf93e",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "connector.call"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            null
+          ],
+          "native_direct_content_dto": false,
+          "native_path_proven": false,
+          "native_original_inputs_preserved": true
+        },
+        {
+          "sample": 2,
+          "legs_seconds": [
+            20.774,
+            7.28
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.0,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 28.08,
+          "native_policy": false,
+          "task_id": "8918c33b6f10d01fbcb2f253af4cde1f",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "connector.call"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            null
+          ],
+          "native_direct_content_dto": false,
+          "native_path_proven": false,
+          "native_original_inputs_preserved": true
+        }
+      ]
+    },
+    {
+      "phase": "baseline18",
+      "case": "bash_success",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "parallel_tool_calls": false,
+      "real_external_execution": true,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            13.593,
+            8.443
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.077,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "actual_exit_code": 0,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 22.152,
+          "native_policy": false,
+          "task_id": "f5db17b4c09bbe099143dcdc3c59490a",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "connector.call"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            null
+          ],
+          "native_direct_content_dto": false,
+          "native_path_proven": false,
+          "native_original_inputs_preserved": true
+        },
+        {
+          "sample": 2,
+          "legs_seconds": [
+            24.188,
+            6.983
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.044,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "actual_exit_code": 0,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 31.266,
+          "native_policy": false,
+          "task_id": "6b27a4198e63c1349e8639a1182eeb42",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "connector.call"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            null
+          ],
+          "native_direct_content_dto": false,
+          "native_path_proven": false,
+          "native_original_inputs_preserved": true
+        }
+      ]
+    },
+    {
+      "phase": "native-production",
+      "case": "read_once",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "parallel_tool_calls": false,
+      "real_external_execution": true,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            19.629,
+            10.293
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.0,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 29.983,
+          "native_policy": true,
+          "task_id": "9121f2dd75b83b03fe06f3f343965db1",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "Read"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            false
+          ],
+          "native_direct_content_dto": true,
+          "native_path_proven": true,
+          "native_original_inputs_preserved": true
+        },
+        {
+          "sample": 2,
+          "legs_seconds": [
+            10.492,
+            7.916
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.0,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 18.433,
+          "native_policy": true,
+          "task_id": "e912e7a50bd22b8950a57acc0a0ba062",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "Read"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            false
+          ],
+          "native_direct_content_dto": true,
+          "native_path_proven": true,
+          "native_original_inputs_preserved": true
+        }
+      ]
+    },
+    {
+      "phase": "native-production",
+      "case": "bash_success",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "parallel_tool_calls": false,
+      "real_external_execution": true,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            14.862,
+            8.719
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.056,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "actual_exit_code": 0,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 23.683,
+          "native_policy": true,
+          "task_id": "928067b674d724d4c2cb1e34d9dfa1ed",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "Bash"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            false
+          ],
+          "native_direct_content_dto": true,
+          "native_path_proven": true,
+          "native_original_inputs_preserved": true
+        },
+        {
+          "sample": 2,
+          "legs_seconds": [
+            15.902,
+            7.073
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.038,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "actual_exit_code": 0,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 23.055,
+          "native_policy": true,
+          "task_id": "33ca90ac429723d00412d3bf46f2aa00",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "Bash"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            false
+          ],
+          "native_direct_content_dto": true,
+          "native_path_proven": true,
+          "native_original_inputs_preserved": true
+        }
+      ]
+    },
+    {
+      "probes": [
+        {
+          "name": "claude_stream",
+          "answer_ok": true,
+          "seconds": 5.309
+        },
+        {
+          "name": "claude_native_error_default_parallel",
+          "answer_ok": true,
+          "native_error_preserved": true,
+          "parallel_default_preserved": true,
+          "tools": 32,
+          "effort": 7,
+          "seconds": [
+            8.787,
+            6.35
+          ],
+          "task_id": "1085042af1df677ff050bc3b53bc7dc3"
+        },
+        {
+          "name": "claude_mixed_parallel_batch",
+          "answer_ok": true,
+          "native_error_preserved": true,
+          "reversed_results_ok": true,
+          "calls": 2,
+          "effort": 7,
+          "seconds": [
+            24.093,
+            6.291
+          ],
+          "task_id": "d91c4aa8107297285268df09c0dae0dc"
+        }
+      ]
+    },
+    {
+      "name": "responses_native_read",
+      "answer_ok": true,
+      "native_path_proven": true,
+      "full_catalog_retained": true,
+      "effort": 7,
+      "seconds": [
+        9.717,
+        6.895
+      ],
+      "task_id": "9d26708609a9b296704ef3c3ad6ea097"
+    },
+    {
+      "name": "independent_read_batch",
+      "production": true,
+      "tools": 32,
+      "effort": 7,
+      "legs_seconds": [
+        19.047,
+        7.707
+      ],
+      "answer_ok": true,
+      "calls": 2,
+      "one_mcp_batch": true,
+      "reversed_results_ok": true,
+      "task_id": "617c1fa547bac93800a6df15260a97eb",
+      "native_policy": true,
+      "generation_posts": 1
+    }
+  ],
+  "isolated_reports": [
+    {
+      "phase": "fallback-isolated",
+      "case": "read_once",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "parallel_tool_calls": false,
+      "real_external_execution": true,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            16.576,
+            6.91
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.001,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 23.509,
+          "native_policy": true,
+          "task_id": "bee0253e7e513d01f02733ffd5214ed3",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "connector.call"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            null
+          ],
+          "native_direct_content_dto": false,
+          "native_path_proven": false,
+          "native_original_inputs_preserved": true
+        }
+      ]
+    },
+    {
+      "name": "independent_read_batch",
+      "production": false,
+      "tools": 32,
+      "effort": 7,
+      "legs_seconds": [
+        23.411,
+        6.605
+      ],
+      "answer_ok": true,
+      "calls": 2,
+      "one_mcp_batch": true,
+      "reversed_results_ok": true,
+      "task_id": "802a21694465d0f67bf0ee67c59299ea",
+      "native_policy": true,
+      "generation_posts": 1
+    },
+    {
+      "phase": "native-isolated",
+      "case": "bash_error",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "parallel_tool_calls": false,
+      "real_external_execution": true,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            10.18,
+            9.42
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.057,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "actual_exit_code": 7,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 19.686,
+          "native_policy": true,
+          "task_id": "66c5a3a28600809eb9b984f644b9f7a1",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "Bash"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            true
+          ],
+          "native_direct_content_dto": true,
+          "native_path_proven": true,
+          "native_original_inputs_preserved": true
+        }
+      ]
+    },
+    {
+      "phase": "native-isolated",
+      "case": "dependency",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "parallel_tool_calls": false,
+      "real_external_execution": true,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            10.959,
+            8.475,
+            8.246
+          ],
+          "calls_per_leg": [
+            1,
+            1,
+            0
+          ],
+          "executions": 2,
+          "client_seconds": 0.04,
+          "idempotent_replays": 2,
+          "argument_checks_ok": true,
+          "actual_exit_code": 0,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 27.776,
+          "native_policy": true,
+          "task_id": "84c81c9d90d6bfed8abbf7d2a0abf525",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 2,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "Read",
+            "Bash"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 2,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            false,
+            false
+          ],
+          "native_direct_content_dto": true,
+          "native_path_proven": true,
+          "native_original_inputs_preserved": true
+        }
+      ]
+    },
+    {
+      "phase": "native-isolated-parallel",
+      "case": "read_once",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "parallel_tool_calls": true,
+      "real_external_execution": true,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [],
+          "calls_per_leg": [],
+          "executions": 0,
+          "client_seconds": 0.0,
+          "idempotent_replays": 0,
+          "argument_checks_ok": true,
+          "answer_ok": false,
+          "failure_type": "HTTPError",
+          "http_status": 409,
+          "total_seconds": 1.597,
+          "native_policy": true,
+          "task_id": "fa50e16dc0c342d23625836305f9d4ae",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 0,
+          "error_code": "upstream_failed",
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 41,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true
+        },
+        {
+          "sample": 2,
+          "legs_seconds": [
+            13.558,
+            8.262
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.0,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 21.841,
+          "native_policy": true,
+          "task_id": "e4b5f0a40d114ba57e0efc1219099832",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 41,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "Read"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            false
+          ],
+          "native_direct_content_dto": true,
+          "native_path_proven": true,
+          "native_original_inputs_preserved": true
+        }
+      ]
+    }
+  ]
+}

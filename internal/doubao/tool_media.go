@@ -20,6 +20,13 @@ type toolMediaScope struct {
 func (g *gateway) toolReply(ctx context.Context, t *gatewayTurn, native object, value string, batch bool) (object, error) {
 	g.mu.Lock()
 	req := t.request
+	isError := false
+	for _, p := range g.calls {
+		if p.turn == t && p.nativeID == textValue(native["id"]) {
+			isError = p.isError
+			break
+		}
+	}
 	g.mu.Unlock()
 	model, _, _ := selectModel(g.models, req.Model, "work")
 	// The auxiliary reader sees text context, never inline base64 as prompt text.
@@ -42,7 +49,17 @@ func (g *gateway) toolReply(ctx context.Context, t *gatewayTurn, native object, 
 		contextMessages = append(contextMessages, m)
 	}
 	scope := toolMediaScope{model: model, taskID: t.id, prompt: jsonText(contextMessages), nativeID: textValue(native["id"]), suspending: func() bool { g.mu.Lock(); defer g.mu.Unlock(); return g.suspending }}
-	return g.c.nativeToolReply(context.WithValue(ctx, toolMediaScopeKey{}, scope), native, value, batch)
+	reply, err := g.c.nativeToolReply(context.WithValue(ctx, toolMediaScopeKey{}, scope), native, value, batch, isError)
+	if err == nil && (native["name"] == "Read" || native["name"] == "Bash" || native["name"] == "Write" || native["name"] == "Edit") {
+		// Builtins use content/isError directly; raw_result belongs to MCP.
+		content := field(parsed(reply["raw_result"]), "content")
+		delete(reply, "raw_result")
+		reply["content"], reply["isError"] = content, isError
+		if isError {
+			reply["error_code"], reply["error_msg"] = "EXTERNAL_TOOL_ERROR", value
+		}
+	}
+	return reply, err
 }
 func (g *gateway) awaitNativePending(ctx context.Context, t *gatewayTurn, p *clientToolPending, native object) (object, error) {
 	select {

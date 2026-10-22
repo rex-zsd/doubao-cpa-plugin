@@ -315,7 +315,7 @@ func TestContinuedPromptsAndBodies(t *testing.T) {
 	req := toolRequest()
 	req.Messages = []apiMessage{{Role: "user", Content: "b"}, {Role: "user", Content: "c"}}
 	prompt := renderAPIPrompt(req, connectorName("0123456789abcdef"), true)
-	if !strings.Contains(prompt, "上一条回答之后新增的对话记录") || !strings.Contains(prompt, "本轮新注册，之前轮次的工具名已失效") || strings.Contains(prompt, "完整对话记录") {
+	if !strings.Contains(prompt, "上一条回答之后新增的对话记录") || !strings.Contains(prompt, "调用方本轮可用的外部函数") || strings.Contains(prompt, "之前轮次的工具名已失效") || strings.Contains(prompt, "完整对话记录") {
 		t.Fatal(prompt)
 	}
 	body := localToolBody("fixture", "1000000000001", Model{ID: "1", Think: 1}, "/owned", "sandbox", "123", "456", []any{})

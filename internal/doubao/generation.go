@@ -402,12 +402,22 @@ func (c *Client) runObserved(ctx context.Context, body object, receiptPath strin
 			return r, errors.New("async task has no terminal event; do not resend")
 		}
 	}
+	if observe != nil {
+		if err = observe("GATEWAY_STREAM_FINISHED", nil); err != nil {
+			return r, err
+		}
+	}
 	for {
 		text, finished, err := c.readReply(ctx, r)
 		if err != nil {
 			return r, err
 		}
 		if finished {
+			if observe != nil {
+				if err = observe("GATEWAY_READBACK_FINISHED", nil); err != nil {
+					return r, err
+				}
+			}
 			r.Reply = text
 			r.Completed = true
 			return r, checkpoint()

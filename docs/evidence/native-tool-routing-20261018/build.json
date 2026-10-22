@@ -1,0 +1,13 @@
+{
+  "version": "0.3.19",
+  "source_commit": "b25fa4e",
+  "implementation_commit": "42084e9",
+  "plugin_sha256": "b3e78ee81bed9f951db4c0493ee91b1b5ff365c1d4d03dbb96b9a548b38f4137",
+  "helper_sha256": "75c0e0b112327f7610ec4f0a7f3d66114815e0e5372b041d39e49255078c6df1",
+  "validation": [
+    "go test -race ./...",
+    "go test -race ./cmd/cliproxy-plugin"
+  ],
+  "toolchain": "golang:1.26-bookworm",
+  "cpa": "8.0.13"
+}

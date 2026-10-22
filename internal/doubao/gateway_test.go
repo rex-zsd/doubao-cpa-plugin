@@ -292,8 +292,11 @@ func TestLongToolSchemasMoveIntoThePrompt(t *testing.T) {
 	if schema := jsonText(connectorSchema(req.Tools[1])); strings.Contains(schema, "END-OF-SCHEMA") || !strings.Contains(schema, "「函数 big 的参数结构」") {
 		t.Fatal("connector schema was not replaced", schema)
 	}
-	if prompt := renderAPIPrompt(req, "connector", false); !strings.Contains(prompt, "「函数 big 的参数结构」\n"+plainJSON(big)) || strings.Contains(prompt, "函数 small 的参数结构") || strings.Contains(prompt, batchToolName) {
-		t.Fatal("prompt lacks exactly the long schema, or still batches")
+	if prompt := renderAPIPrompt(req, "connector", false); !strings.Contains(prompt, "「函数 big 的参数结构」\n"+plainJSON(big)) || strings.Contains(prompt, "函数 small 的参数结构") || !compactBatchMode(req) {
+		t.Fatal("prompt lost the full schema or compact batch mode")
+	}
+	if catalog := toolCatalog(req); len(catalog) != 2+len(batchRoutes(req)) || strings.Contains(textValue(field(catalog[len(catalog)-1], "inputSchema")), "END-OF-SCHEMA") {
+		t.Fatal("compact envelope duplicates the large schema")
 	}
 	// The limit counts the description too.
 	req.Tools[0].Function.Description = strings.Repeat("y", connectorDescriptionLimit)
@@ -607,6 +610,9 @@ func TestGatewayTaskThatNeverStartedIsSafeToRetry(t *testing.T) {
 	if status != 429 || field(response, "error", "code") != "task_not_started" || !strings.Contains(textValue(field(response, "error", "message")), "listed as disabled") {
 		t.Fatal("unstarted task did not ask for a retry", status, response)
 	}
+	// Errors, like verified answers, no longer wait for connector cleanup.
+	// The tracked worker must still clean up without starting generation.
+	g.wg.Wait()
 	if generations.Load() != 0 || !disconnected.Load() {
 		t.Fatal("generation was submitted or connector left behind", generations.Load())
 	}

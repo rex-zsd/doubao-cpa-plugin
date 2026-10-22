@@ -20,8 +20,9 @@ const provider = "doubao-work"
 
 type object = map[string]any
 type config struct {
-	StateDir   string `yaml:"state_dir"`
-	HelperPath string `yaml:"helper_path"`
+	StateDir    string `yaml:"state_dir"`
+	HelperPath  string `yaml:"helper_path"`
+	NativeTools bool   `yaml:"native_tools"`
 }
 
 var runtime struct {
@@ -107,6 +108,44 @@ type request struct {
 	CallbackID                                                         string `json:"host_callback_id"`
 }
 
+// CPA resolves model aliases in Model. When no format translation is needed,
+// Payload still contains the client-facing alias, so use the host's resolved
+// model for execution. Raw fields preserve tool arguments and large numbers.
+func executorPayload(req request) ([]byte, error) {
+	payload := req.Payload
+	var err error
+	if req.SourceFormat == "openai-response" {
+		payload, err = doubao.NormalizeResponses(payload)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if claudeClientRequest(req) && len(req.OriginalRequest) > 0 {
+		payload, err = restoreClaudeToolErrors(payload, req.OriginalRequest)
+		if err != nil {
+			return nil, err
+		}
+		payload, err = restoreClaudeParallel(payload, req.OriginalRequest)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if req.Model == "" {
+		return payload, nil
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(payload, &fields) != nil || fields == nil {
+		// Keep malformed input for the existing API validator to report as 400.
+		return payload, nil
+	}
+	model, _ := json.Marshal(req.Model)
+	if bytes.Equal(bytes.TrimSpace(fields["model"]), model) {
+		return payload, nil
+	}
+	fields["model"] = model
+	return json.Marshal(fields)
+}
+
 func openService() (*doubao.Service, error) {
 	runtime.Lock()
 	defer runtime.Unlock()
@@ -140,7 +179,7 @@ func openService() (*doubao.Service, error) {
 // refuse redirects and pin public media downloads, so the official CPA host
 // needs no HTTP bridge.
 func serviceConfig(cfg config) doubao.ServiceConfig {
-	return doubao.ServiceConfig{StateDir: cfg.StateDir, HelperPath: cfg.HelperPath}
+	return doubao.ServiceConfig{StateDir: cfg.StateDir, HelperPath: cfg.HelperPath, ConnectorReuse: true, NativeTools: cfg.NativeTools}
 }
 func closePlugin() {
 	runtime.Lock()
@@ -219,7 +258,7 @@ func dispatch(method string, raw []byte) (any, error) {
 		changed := runtime.service != nil && runtime.config != cfg
 		runtime.Unlock()
 		if changed {
-			return nil, errors.New("stop active plugin before changing state_dir or helper_path")
+			return nil, errors.New("stop active plugin before changing plugin configuration")
 		}
 		runtime.Lock()
 		runtime.config = cfg
@@ -228,7 +267,7 @@ func dispatch(method string, raw []byte) (any, error) {
 		}
 		runtime.closed = false
 		runtime.Unlock()
-		return object{"schema_version": 6, "metadata": object{"Name": provider, "Version": "0.3.9", "Author": "rex", "GitHubRepository": "https://github.com/rex-zsd/doubao-cpa-plugin", "ConfigFields": []any{object{"Name": "state_dir", "Type": "string", "Description": "Private account and task state directory"}, object{"Name": "helper_path", "Type": "string", "Description": "Absolute path to doubao-helper"}}}, "capabilities": object{"auth_provider": true, "model_provider": true, "executor": true, "executor_model_scope": "oauth", "executor_input_formats": []string{"chat-completions", "openai-response"}, "executor_output_formats": []string{"chat-completions"}}}, nil
+		return object{"schema_version": 6, "metadata": object{"Name": provider, "Version": "0.3.20", "Author": "rex", "GitHubRepository": "https://github.com/rex-zsd/doubao-cpa-plugin", "ConfigFields": []any{object{"Name": "state_dir", "Type": "string", "Description": "Private account and task state directory"}, object{"Name": "helper_path", "Type": "string", "Description": "Absolute path to doubao-helper"}, object{"Name": "native_tools", "Type": "boolean", "Description": "Forward compatible native text Read, Edit, Write and foreground Bash to the caller; default false, retain MCP for incompatible tools"}}}, "capabilities": object{"auth_provider": true, "model_provider": true, "executor": true, "executor_model_scope": "oauth", "executor_input_formats": []string{"chat-completions", "openai-response"}, "executor_output_formats": []string{"chat-completions"}}}, nil
 	case "plugin.shutdown", "plugin.quiesce":
 		closePlugin()
 		return object{}, nil
@@ -278,12 +317,9 @@ func dispatch(method string, raw []byte) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		payload := req.Payload
-		if req.SourceFormat == "openai-response" {
-			payload, err = doubao.NormalizeResponses(payload)
-			if err != nil {
-				return nil, err
-			}
+		payload, err := executorPayload(req)
+		if err != nil {
+			return nil, err
 		}
 		response, err := s.Submit(context.Background(), payload, req.Headers.Get("Idempotency-Key"))
 		if err != nil {

@@ -113,6 +113,7 @@ func (x *apiExchange) visibleSnapshot() (string, <-chan struct{}) {
 }
 func (g *gateway) answerObserver(t *gatewayTurn) func(string, object) error {
 	state := &nativeVisibleStream{}
+	visible := false
 	return func(name string, data object) error {
 		text := state.observe(name, data)
 		g.mu.Lock()
@@ -124,6 +125,10 @@ func (g *gateway) answerObserver(t *gatewayTurn) func(string, object) error {
 		g.mu.Unlock()
 		if enabled {
 			x.updateVisible(text)
+			if text != "" && !visible {
+				visible = true
+				timing(t, "first_visible_text", x.started)
+			}
 		}
 		return nil
 	}

@@ -1,0 +1,1401 @@
+{
+  "version": "0.3.20",
+  "reports": {
+    "native-write_code": {
+      "phase": "native",
+      "case": "write_code",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            9.085,
+            10.238
+          ],
+          "client_seconds": 0.001,
+          "executions": 1,
+          "idempotent_replays": 1,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 19.347,
+          "tool_names": [
+            "Write"
+          ],
+          "task_id": "bc26bfcf863bf3e98b506c7d482954e4",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Write"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 1,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        },
+        {
+          "sample": 2,
+          "legs_seconds": [
+            9.917,
+            6.016
+          ],
+          "client_seconds": 0.0,
+          "executions": 1,
+          "idempotent_replays": 1,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 15.945,
+          "tool_names": [
+            "Write"
+          ],
+          "task_id": "1333e3ffed3e519a0ea3dc1b54758fe0",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Write"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 1,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        },
+        {
+          "sample": 3,
+          "legs_seconds": [
+            14.444,
+            8.226
+          ],
+          "client_seconds": 0.0,
+          "executions": 1,
+          "idempotent_replays": 1,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 22.683,
+          "tool_names": [
+            "Write"
+          ],
+          "task_id": "2baaaeab795ab635d3c7dc9a53e371e8",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Write"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 1,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        }
+      ]
+    },
+    "native-coding_chain": {
+      "phase": "native",
+      "case": "coding_chain",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            9.267,
+            8.935,
+            6.746,
+            6.095,
+            6.83
+          ],
+          "client_seconds": 0.001,
+          "executions": 4,
+          "idempotent_replays": 4,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 37.934,
+          "tool_names": [
+            "Read",
+            "Write",
+            "Edit",
+            "Read"
+          ],
+          "task_id": "5014298c834f5b2bce08d689d3b1340c",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 4,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Read",
+            "Write",
+            "Edit",
+            "Read"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 4,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        }
+      ]
+    },
+    "native-edit_replace_all": {
+      "phase": "native",
+      "case": "edit_replace_all",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            8.166,
+            6.753,
+            8.668,
+            6.721
+          ],
+          "client_seconds": 0.0,
+          "executions": 3,
+          "idempotent_replays": 3,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 30.374,
+          "tool_names": [
+            "Read",
+            "Edit",
+            "Read"
+          ],
+          "task_id": "786b7515d13ccd2030d3e57c45589403",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 3,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Read",
+            "Edit",
+            "Read"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 3,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        }
+      ]
+    },
+    "baseline-chain-diagnostic": {
+      "baseline": "0.3.19",
+      "case": "coding_chain",
+      "completed_comparable_sample": false,
+      "write_intercepted_before_execution": true,
+      "missing_trailing_newline": true,
+      "full_state_done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1
+    },
+    "native-go-read_once": {
+      "phase": "native-go",
+      "case": "read_once",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "parallel_tool_calls": false,
+      "real_external_execution": true,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            9.58,
+            7.97
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.0,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 17.586,
+          "native_policy": true,
+          "task_id": "515e1b1c02a0fe191990ee9b498a0686",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "Read"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            false
+          ],
+          "native_direct_content_dto": true,
+          "native_path_proven": true,
+          "native_original_inputs_preserved": true
+        },
+        {
+          "sample": 2,
+          "legs_seconds": [
+            45.162,
+            7.367
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.0,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 52.553,
+          "native_policy": true,
+          "task_id": "8283815d9b19bbae5f53ca84854c59db",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "Read"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            false
+          ],
+          "native_direct_content_dto": true,
+          "native_path_proven": true,
+          "native_original_inputs_preserved": true
+        },
+        {
+          "sample": 3,
+          "legs_seconds": [
+            12.831,
+            10.629
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.0,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 23.482,
+          "native_policy": true,
+          "task_id": "c1433f32d526d991caeaa57d855459ee",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "Read"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            false
+          ],
+          "native_direct_content_dto": true,
+          "native_path_proven": true,
+          "native_original_inputs_preserved": true
+        }
+      ]
+    },
+    "responses-verification": {
+      "name": "responses_native_read",
+      "answer_ok": true,
+      "native_path_proven": true,
+      "full_catalog_retained": true,
+      "effort": 7,
+      "seconds": [
+        14.817,
+        11.662
+      ],
+      "task_id": "40a2ab2af6dac81c49b88de7035e3905"
+    },
+    "baseline-coding_chain": {
+      "phase": "baseline",
+      "case": "coding_chain",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            17.036,
+            18.298
+          ],
+          "client_seconds": 0.0,
+          "executions": 1,
+          "idempotent_replays": 2,
+          "answer_ok": false,
+          "failure_type": "AssertionError",
+          "http_status": null,
+          "total_seconds": 35.365,
+          "tool_names": [
+            "Read"
+          ],
+          "task_id": "3870672b2f420046b041e26ae3f7a5a4",
+          "done": false,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 2,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": false,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "connector.call",
+            "connector.call"
+          ],
+          "native_path_proven": false,
+          "native_results_uploaded": 1,
+          "native_original_inputs_preserved": false,
+          "native_result_ids_match": false,
+          "actual_results_and_errors_exact": false
+        }
+      ]
+    },
+    "claude-refusal": {
+      "name": "claude_stream_refusal",
+      "tools": 32,
+      "seconds": [
+        10.435,
+        6.996,
+        7.705
+      ],
+      "tool_names": [
+        "Read",
+        "Write"
+      ],
+      "client_executions": 2,
+      "stream_message_stops": [
+        1,
+        1,
+        1
+      ],
+      "answer_ok": true,
+      "filesystem_checks_ok": true,
+      "task_id": "378249e8f9291f946a81958183ab0014",
+      "done": true,
+      "generation_posts": 1,
+      "denied_tools": 0,
+      "parallel_default_preserved": true,
+      "resolved_model": "doubao-orange-5.5",
+      "effort": 7,
+      "full_catalog_retained": true,
+      "native_call_names": [
+        "Read",
+        "Write"
+      ],
+      "native_path_proven": true,
+      "native_original_inputs_preserved": true,
+      "native_result_ids_match": true,
+      "actual_results_and_errors_exact": true
+    },
+    "native-empty_read": {
+      "phase": "native",
+      "case": "empty_read",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            8.669,
+            5.555
+          ],
+          "client_seconds": 0.0,
+          "executions": 1,
+          "idempotent_replays": 1,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 14.245,
+          "tool_names": [
+            "Read"
+          ],
+          "task_id": "f1bc5a5517683097a50f96e0f646c00e",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Read"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 1,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        }
+      ]
+    },
+    "native-edit_absent": {
+      "phase": "native",
+      "case": "edit_absent",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            9.57,
+            8.201,
+            7.209
+          ],
+          "client_seconds": 0.0,
+          "executions": 2,
+          "idempotent_replays": 2,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 25.05,
+          "tool_names": [
+            "Read",
+            "Edit"
+          ],
+          "task_id": "7740ec4f4bb4604f847711563d8a7669",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 2,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Read",
+            "Edit"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 2,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        }
+      ]
+    },
+    "production-cache-verification": {
+      "claude_catalog_reused": true,
+      "different_tasks_and_sandboxes": true,
+      "all_own_leases_released": true,
+      "both_parallel_policies_preserved": true
+    },
+    "native-refusal": {
+      "phase": "native",
+      "case": "refusal",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            9.398,
+            7.619,
+            7.583
+          ],
+          "client_seconds": 0.0,
+          "executions": 2,
+          "idempotent_replays": 2,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 24.635,
+          "tool_names": [
+            "Read",
+            "Write"
+          ],
+          "task_id": "c52173bb946433dcffa0196126c61868",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 2,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Read",
+            "Write"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 2,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        }
+      ]
+    },
+    "native-edit_nonunique": {
+      "phase": "native",
+      "case": "edit_nonunique",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            9.623,
+            6.934,
+            6.988
+          ],
+          "client_seconds": 0.0,
+          "executions": 2,
+          "idempotent_replays": 2,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 23.593,
+          "tool_names": [
+            "Read",
+            "Edit"
+          ],
+          "task_id": "af816fea01c126d2b8155b656e78fbb3",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 2,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Read",
+            "Edit"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 2,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        }
+      ]
+    },
+    "baseline-go-read_once": {
+      "phase": "baseline-go",
+      "case": "read_once",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "parallel_tool_calls": false,
+      "real_external_execution": true,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            14.248,
+            5.911
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.0,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 20.185,
+          "native_policy": true,
+          "task_id": "b48413d49a2e64a75ae770b24829ae8c",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "connector.call"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            null
+          ],
+          "native_direct_content_dto": false,
+          "native_path_proven": false,
+          "native_original_inputs_preserved": true
+        },
+        {
+          "sample": 2,
+          "legs_seconds": [
+            16.199,
+            6.185
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.0,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 22.397,
+          "native_policy": true,
+          "task_id": "e0a5933d64629fec5dfcb3b83241fc74",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "connector.call"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            null
+          ],
+          "native_direct_content_dto": false,
+          "native_path_proven": false,
+          "native_original_inputs_preserved": true
+        },
+        {
+          "sample": 3,
+          "legs_seconds": [
+            18.994,
+            8.387
+          ],
+          "calls_per_leg": [
+            1,
+            0
+          ],
+          "executions": 1,
+          "client_seconds": 0.0,
+          "idempotent_replays": 1,
+          "argument_checks_ok": true,
+          "answer_ok": true,
+          "semantic_answer_ok": true,
+          "format_only_difference": false,
+          "total_seconds": 27.409,
+          "native_policy": true,
+          "task_id": "0378b0fe0aee296fdaaeadce03e69c3f",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "upstream_effort": "7",
+          "upstream_catalog_entries": 32,
+          "request_catalog_exact": true,
+          "full_catalog_retained": true,
+          "native_call_names": [
+            "connector.call"
+          ],
+          "native_call_ids_unique": true,
+          "native_results_uploaded": 1,
+          "native_result_ids_match": true,
+          "native_direct_error_flags": [
+            null
+          ],
+          "native_direct_content_dto": false,
+          "native_path_proven": false,
+          "native_original_inputs_preserved": true
+        }
+      ]
+    },
+    "native-utf8_read": {
+      "phase": "native",
+      "case": "utf8_read",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            9.63,
+            8.518
+          ],
+          "client_seconds": 0.0,
+          "executions": 1,
+          "idempotent_replays": 1,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 18.163,
+          "tool_names": [
+            "Read"
+          ],
+          "task_id": "23a2128e00e5705d00e3a58f5121c05d",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Read"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 1,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        }
+      ]
+    },
+    "native-missing_read": {
+      "phase": "native",
+      "case": "missing_read",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            9.508,
+            7.205
+          ],
+          "client_seconds": 0.0,
+          "executions": 1,
+          "idempotent_replays": 1,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 16.728,
+          "tool_names": [
+            "Read"
+          ],
+          "task_id": "98005dfe8dbc92ca29de9313963fa0a1",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Read"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 1,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        }
+      ]
+    },
+    "baseline-write_code": {
+      "phase": "baseline",
+      "case": "write_code",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            15.528,
+            9.141
+          ],
+          "client_seconds": 0.0,
+          "executions": 1,
+          "idempotent_replays": 1,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 24.693,
+          "tool_names": [
+            "Write"
+          ],
+          "task_id": "c6c935477ebdbe90a568940154214187",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "connector.call"
+          ],
+          "native_path_proven": false,
+          "native_results_uploaded": 1,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        },
+        {
+          "sample": 2,
+          "legs_seconds": [
+            18.584,
+            5.993
+          ],
+          "client_seconds": 0.0,
+          "executions": 1,
+          "idempotent_replays": 1,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 24.603,
+          "tool_names": [
+            "Write"
+          ],
+          "task_id": "3d9deca0937e280d84191c41317f4990",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "connector.call"
+          ],
+          "native_path_proven": false,
+          "native_results_uploaded": 1,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        },
+        {
+          "sample": 3,
+          "legs_seconds": [
+            17.009,
+            5.64
+          ],
+          "client_seconds": 0.0,
+          "executions": 1,
+          "idempotent_replays": 1,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 22.662,
+          "tool_names": [
+            "Write"
+          ],
+          "task_id": "9726fafe6e6549d59edd387ff59388e8",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "connector.call"
+          ],
+          "native_path_proven": false,
+          "native_results_uploaded": 1,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        }
+      ]
+    },
+    "native-write_empty": {
+      "phase": "native",
+      "case": "write_empty",
+      "model": "doubao-orange-5.5",
+      "effort": 7,
+      "tools": 32,
+      "samples": [
+        {
+          "sample": 1,
+          "legs_seconds": [
+            8.62,
+            6.697
+          ],
+          "client_seconds": 0.0,
+          "executions": 1,
+          "idempotent_replays": 1,
+          "answer_ok": true,
+          "filesystem_checks_ok": true,
+          "total_seconds": 15.348,
+          "tool_names": [
+            "Write"
+          ],
+          "task_id": "5d9ae719bd055373e43c93a1b6b7219c",
+          "done": true,
+          "generation_posts": 1,
+          "denied_tools": 0,
+          "forwarded_tools": 1,
+          "error_code": null,
+          "native_policy": true,
+          "full_catalog_retained": true,
+          "full_history_retained": true,
+          "upstream_effort": "7",
+          "resolved_model": "doubao-orange-5.5",
+          "wire_catalog_exact": true,
+          "native_call_names": [
+            "Write"
+          ],
+          "native_path_proven": true,
+          "native_results_uploaded": 1,
+          "native_original_inputs_preserved": true,
+          "native_result_ids_match": true,
+          "actual_results_and_errors_exact": true
+        }
+      ]
+    },
+    "claude-coding_chain": {
+      "name": "claude_stream_coding_chain",
+      "tools": 32,
+      "seconds": [
+        10.556,
+        8.641,
+        6.951,
+        6.632,
+        7.451
+      ],
+      "tool_names": [
+        "Read",
+        "Write",
+        "Edit",
+        "Read"
+      ],
+      "client_executions": 4,
+      "stream_message_stops": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "answer_ok": true,
+      "filesystem_checks_ok": true,
+      "task_id": "fbd30450da33fcbefcff952af054cb33",
+      "done": true,
+      "generation_posts": 1,
+      "denied_tools": 0,
+      "parallel_default_preserved": true,
+      "resolved_model": "doubao-orange-5.5",
+      "effort": 7,
+      "full_catalog_retained": true,
+      "native_call_names": [
+        "Read",
+        "Write",
+        "Edit",
+        "Read"
+      ],
+      "native_path_proven": true,
+      "native_original_inputs_preserved": true,
+      "native_result_ids_match": true,
+      "actual_results_and_errors_exact": true
+    }
+  },
+  "benchmarks": {
+    "go_read": {
+      "0.3.19": {
+        "n": 3,
+        "total_seconds": [
+          20.185,
+          22.397,
+          27.409
+        ],
+        "median_seconds": 22.397,
+        "first_tool_seconds": [
+          14.248,
+          16.199,
+          18.994
+        ],
+        "first_tool_median_seconds": 16.199
+      },
+      "0.3.20": {
+        "n": 3,
+        "total_seconds": [
+          17.586,
+          52.553,
+          23.482
+        ],
+        "median_seconds": 23.482,
+        "first_tool_seconds": [
+          9.58,
+          45.162,
+          12.831
+        ],
+        "first_tool_median_seconds": 12.831
+      },
+      "scope": "small sequential sample; upstream variance included; not a general speed guarantee"
+    },
+    "code_write": {
+      "0.3.19": {
+        "n": 3,
+        "total_seconds": [
+          24.693,
+          24.603,
+          22.662
+        ],
+        "median_seconds": 24.603,
+        "first_tool_seconds": [
+          15.528,
+          18.584,
+          17.009
+        ],
+        "first_tool_median_seconds": 17.009
+      },
+      "0.3.20": {
+        "n": 3,
+        "total_seconds": [
+          19.347,
+          15.945,
+          22.683
+        ],
+        "median_seconds": 19.347,
+        "first_tool_seconds": [
+          9.085,
+          9.917,
+          14.444
+        ],
+        "first_tool_median_seconds": 9.917
+      },
+      "scope": "small sequential sample; upstream variance included; not a general speed guarantee"
+    }
+  },
+  "own_tasks": [
+    {
+      "id": "23a2128e00e5705d00e3a58f5121c05d",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "e0a5933d64629fec5dfcb3b83241fc74",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "af816fea01c126d2b8155b656e78fbb3",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "5014298c834f5b2bce08d689d3b1340c",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "0378b0fe0aee296fdaaeadce03e69c3f",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "f1bc5a5517683097a50f96e0f646c00e",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "98005dfe8dbc92ca29de9313963fa0a1",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "3870672b2f420046b041e26ae3f7a5a4",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "2baaaeab795ab635d3c7dc9a53e371e8",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "c1433f32d526d991caeaa57d855459ee",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "bc26bfcf863bf3e98b506c7d482954e4",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "b48413d49a2e64a75ae770b24829ae8c",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "786b7515d13ccd2030d3e57c45589403",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "5d9ae719bd055373e43c93a1b6b7219c",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "c6c935477ebdbe90a568940154214187",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "1333e3ffed3e519a0ea3dc1b54758fe0",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "c52173bb946433dcffa0196126c61868",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "9726fafe6e6549d59edd387ff59388e8",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "7740ec4f4bb4604f847711563d8a7669",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "8283815d9b19bbae5f53ca84854c59db",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "515e1b1c02a0fe191990ee9b498a0686",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "3d9deca0937e280d84191c41317f4990",
+      "isolated": true,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "fbd30450da33fcbefcff952af054cb33",
+      "isolated": false,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "378249e8f9291f946a81958183ab0014",
+      "isolated": false,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    },
+    {
+      "id": "40a2ab2af6dac81c49b88de7035e3905",
+      "isolated": false,
+      "done": true,
+      "cleanup_confirmed": true,
+      "generation_posts": 1,
+      "error_code": null
+    }
+  ],
+  "cache": {
+    "catalogs": 2,
+    "holders": 0,
+    "retiring": 0
+  },
+  "deployment": {
+    "version": "0.3.20",
+    "previous_version": "0.3.19",
+    "sha256": "74c93d7e5b770b9c09b66de5c42b50ff2758c37194095e98c711942a42eb5638",
+    "helper_sha256": "acc0f9466023e6caf4d390a2134138cd037cd63f001977a24cce51722ca0c8ef",
+    "models_unchanged": true,
+    "container_unchanged": true,
+    "config_semantics_unchanged": true,
+    "tasks_before": {
+      "active": 0,
+      "cleanup_pending": 0
+    },
+    "tasks_after": {
+      "active": 0,
+      "cleanup_pending": 0
+    }
+  },
+  "invariants": {
+    "own_tasks_done": true,
+    "own_tasks_cleaned": true,
+    "one_generation_per_own_task": true,
+    "isolated_device_distinct": true,
+    "isolated_port_closed": true,
+    "plugin_sha_matches": true,
+    "helper_sha_matches": true,
+    "config_semantics_unchanged": true
+  }
+}

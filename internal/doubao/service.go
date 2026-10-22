@@ -17,6 +17,8 @@ type ServiceConfig struct {
 	StateDir, HelperPath string
 	Transport            http.RoundTripper
 	TaskTimeout          time.Duration
+	ConnectorReuse       bool
+	NativeTools          bool
 }
 
 // PublicModel is a routable model: ID is its slug, DisplayName the catalog
@@ -90,11 +92,22 @@ func OpenService(ctx context.Context, config ServiceConfig) (*Service, error) {
 	}
 	g := newGateway(lifetime, c, aliases, config.StateDir, config.TaskTimeout)
 	g.apiKey = ""
+	g.nativeTools = config.NativeTools
 	g.helperPath = config.HelperPath
+	if config.ConnectorReuse {
+		g.connectors, err = loadConnectorPool(g)
+		if err != nil {
+			stop()
+			return nil, err
+		}
+	}
 	s := &Service{c: c, g: g, cancel: stop, Models: public, lock: lock}
 	if err = g.recoverTasks(); err != nil {
 		stop()
 		return nil, err
+	}
+	if g.connectors != nil {
+		g.connectors.start()
 	}
 	opened = true
 	return s, nil
@@ -153,6 +166,9 @@ func (s *Service) Close() {
 	s.g.mu.Unlock()
 	s.cancel()
 	s.g.wg.Wait()
+	if s.g.connectors != nil {
+		s.g.connectors.close()
+	}
 	unlockFile(s.lock)
 }
 func (e *apiError) StatusCode() int   { return e.Status }

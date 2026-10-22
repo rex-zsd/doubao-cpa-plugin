@@ -1,0 +1,11 @@
+{
+  "version": "0.3.20",
+  "source_commit": "f38d0907333a769f4fdde12954d90b6f3577a447",
+  "plugin_sha256": "74c93d7e5b770b9c09b66de5c42b50ff2758c37194095e98c711942a42eb5638",
+  "helper_sha256": "acc0f9466023e6caf4d390a2134138cd037cd63f001977a24cce51722ca0c8ef",
+  "validation": [
+    "go test -race ./..."
+  ],
+  "toolchain": "golang:1.26-bookworm",
+  "cpa": "8.0.13"
+}

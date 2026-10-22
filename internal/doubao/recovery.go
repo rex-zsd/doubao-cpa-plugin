@@ -94,7 +94,9 @@ func (g *gateway) recoverTasks() error {
 			deadline = info.ModTime().Add(g.taskTimeout)
 		}
 		ctx, cancel := context.WithCancel(g.ctx)
-		t := &gatewayTurn{id: id, request: req, ctx: ctx, cancel: cancel, deadline: deadline, statePath: path, receiptPath: filepath.Join(g.dir, "gateway-receipt-"+id+".json"), connector: textValue(state["connector_id"]), sandbox: textValue(state["sandbox_id"]), generationPosts: number(state["generation_posts"]), forwarded: number(state["forwarded_tools"]), denied: number(state["denied_tools"]), cleanupConfirmed: state["cleanup_confirmed"] == true, cleanupRequested: state["cleanup_requested"] == true, initialKey: textValue(state["initial_key"]), initialHash: textValue(state["initial_hash"]), finalText: textValue(state["final_text"]), conversation: textValue(state["conversation_id"]), mode: textValue(state["mode"]), workspace: textValue(state["workspace"]), continued: number(state["continued"])}
+		t := &gatewayTurn{nativeTools: state["native_tools"] == true, id: id, request: req, ctx: ctx, cancel: cancel, deadline: deadline, statePath: path, receiptPath: filepath.Join(g.dir, "gateway-receipt-"+id+".json"), connector: textValue(state["connector_id"]), sandbox: textValue(state["sandbox_id"]), generationPosts: number(state["generation_posts"]), forwarded: number(state["forwarded_tools"]), denied: number(state["denied_tools"]), cleanupConfirmed: state["cleanup_confirmed"] == true, cleanupRequested: state["cleanup_requested"] == true, initialKey: textValue(state["initial_key"]), initialHash: textValue(state["initial_hash"]), finalText: textValue(state["final_text"]), conversation: textValue(state["conversation_id"]), mode: textValue(state["mode"]), workspace: textValue(state["workspace"]), continued: number(state["continued"])}
+		t.started = time.Now()
+		t.connectorLease, t.connectorLabel = textValue(state["connector_lease"]), textValue(state["connector_label"])
 		exchanges := map[string]*apiExchange{}
 		restore := func(v any) *apiExchange {
 			key := textValue(field(v, "id"))
@@ -114,7 +116,7 @@ func (g *gateway) recoverTasks() error {
 			}
 			p := groups[nativeID]
 			if p == nil {
-				p = &clientToolPending{turn: t, nativeID: nativeID, result: make(chan string, 1), submitted: field(item, "submitted") == true, value: textValue(field(item, "result"))}
+				p = &clientToolPending{turn: t, nativeID: nativeID, result: make(chan string, 1), submitted: field(item, "submitted") == true, value: textValue(field(item, "result")), isError: field(item, "result_is_error") == true}
 				_ = json.Unmarshal([]byte(jsonText(field(item, "call"))), &p.call)
 				_ = json.Unmarshal([]byte(jsonText(field(item, "batch_calls"))), &p.batchCalls)
 				_ = json.Unmarshal([]byte(jsonText(field(item, "expected_messages"))), &p.expected)
@@ -195,7 +197,7 @@ func (g *gateway) recoverTasks() error {
 		if t.initialKey != "" {
 			g.idempotency[t.initialKey] = gatewayIdempotency{hash: t.initialHash, turn: t, exchange: t.first}
 		}
-		if t.done && ((t.connector != "" && !t.cleanupConfirmed) || t.err != nil && t.err.Code == "task_expired") {
+		if t.done && (((t.connector != "" || t.connectorLease != "") && !t.cleanupConfirmed) || t.err != nil && t.err.Code == "task_expired") {
 			cleanup = append(cleanup, t)
 		}
 	}
@@ -208,15 +210,17 @@ func (g *gateway) recoverTasks() error {
 	for _, t := range active {
 		g.armLocked(t)
 		g.wg.Add(1)
+		timing(t, "task_recovered", t.started)
 		go func(t *gatewayTurn) { defer g.wg.Done(); g.resumeNative(t) }(t)
 	}
 	for _, t := range cleanup {
 		g.wg.Add(1)
-		go func(t *gatewayTurn) { defer g.wg.Done(); g.stopExpiredReceipts(t); _ = g.removeConnector(t) }(t)
+		go func(t *gatewayTurn) { defer g.wg.Done(); g.stopExpiredReceipts(t); g.cleanupFinished(t) }(t)
 	}
 	return nil
 }
 func (g *gateway) resumeNative(t *gatewayTurn) {
+	defer g.cleanupFinished(t)
 	var receipt Receipt
 	b, err := os.ReadFile(t.receiptPath)
 	if err == nil {
@@ -229,12 +233,14 @@ func (g *gateway) resumeNative(t *gatewayTurn) {
 	ctx, cancel := context.WithCancel(t.ctx)
 	var streamDone <-chan error
 	streamJoined := false
-	defer func() {
+	joinStream := func() {
 		cancel()
 		if streamDone != nil && !streamJoined {
 			<-streamDone
+			streamJoined = true
 		}
-	}()
+	}
+	defer joinStream()
 	if t.connector != "" {
 		workspace := turnWorkspace(g.dir, t)
 		if resolved, err := filepath.EvalSymlinks(workspace); err == nil {
@@ -268,8 +274,10 @@ func (g *gateway) resumeNative(t *gatewayTurn) {
 		if done {
 			receipt.Completed, receipt.Reply = true, reply
 			_ = saveJSON(t.receiptPath, &receipt)
-			cancel()
-			_ = g.removeConnector(t)
+			// A caller can continue this conversation as soon as finish returns.
+			// Stop both stream and handler before making its sandbox reusable.
+			joinStream()
+			timing(t, "upstream_complete", t.started)
 			g.mu.Lock()
 			t.conversation = receipt.ConversationID
 			g.mu.Unlock()
@@ -290,7 +298,7 @@ func (g *gateway) resumeNative(t *gatewayTurn) {
 		}
 		break
 	}
-	cancel()
+	joinStream()
 	g.mu.Lock()
 	suspending := g.suspending
 	g.mu.Unlock()
@@ -302,7 +310,6 @@ func (g *gateway) resumeNative(t *gatewayTurn) {
 		_ = g.c.stopProbe(stopCtx, t.receiptPath, object{"action": "tool-stop"})
 		stop()
 	}
-	_ = g.removeConnector(t)
 	g.mu.Lock()
 	failure := t.abort
 	g.mu.Unlock()

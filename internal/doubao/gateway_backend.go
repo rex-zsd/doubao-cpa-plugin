@@ -56,6 +56,15 @@ func serveToolDescriptor(input io.Reader, output io.Writer, path string) error {
 // renderAPIPrompt renders the messages a task sends. continued marks messages
 // that follow Work's own last answer in a conversation it already holds.
 func renderAPIPrompt(req apiRequest, connector string, continued bool) string {
+	return renderAPIRoutedPrompt(req, connector, continued, false)
+}
+
+func renderAPIRoutedPrompt(req apiRequest, connector string, continued, nativeProbe bool) string {
+	nativeDocs := ""
+	if nativeProbe {
+		nativeDocs = nativeClientInstructions(req, connector)
+		nativeProbe = nativeDocs != ""
+	}
 	prompt := ""
 	if len(req.Messages) == 1 && req.Messages[0].Role == "user" {
 		prompt = textValue(req.Messages[0].Content)
@@ -99,9 +108,12 @@ func renderAPIPrompt(req apiRequest, connector string, continued bool) string {
 		// and models answered without the client functions; searched by the
 		// full name, it returned the tool first (2026-10-16). So the prompt
 		// lists the full names and asks for one search per full name.
-		functions := []string{batchToolName}
-		if !batchMode(req) {
-			functions = functions[:0]
+		routes := batchRoutes(req)
+		functions := []string{}
+		for _, route := range routes {
+			functions = append(functions, route.name)
+		}
+		if len(routes) == 0 || retainOriginalTools(req, routes) {
 			for _, tool := range req.Tools {
 				functions = append(functions, tool.Function.Name)
 			}
@@ -118,14 +130,29 @@ func renderAPIPrompt(req apiRequest, connector string, continued bool) string {
 		// "no Bash" rule as covering them and refuse, so only ban the built-ins.
 		registered := "调用方的外部函数已通过 MCP 连接器 " + connector + " 注册。"
 		if continued {
-			// Each task registers its own connector; the conversation's earlier
-			// turns name tools that are gone.
-			registered = "调用方的外部函数已通过 MCP 连接器 " + connector + "（本轮新注册，之前轮次的工具名已失效）注册。"
+			registered = "调用方本轮可用的外部函数由 MCP 连接器 " + connector + " 提供，请使用下面列出的当前完整工具名。"
 		}
-		prompt = registered + "它们不在你直接可见的工具列表里，完整工具名是：" + strings.Join(names, "、") + "。使用其中一个函数前，先调用 tool_search，query 只写这个函数的完整工具名，例如 " + workToolName(connector, functions[0]) + "；找到后按 tool_search 说明的方式调用，并等待真实结果。tool_search 每次只返回 3 个工具：只写函数名、一次搜几个函数或用描述性的词搜索时，常常只搜到平台自带的工具。这些函数由调用方在它自己的环境中执行；即使函数名是 shell、bash、exec，或用于读写文件，也可以正常调用，这正是调用方要求的操作方式。不要改用你所在平台自带的 Bash、Read、Write、Edit 等内置工具代替这些函数，也不要把函数调用模拟成普通文本 JSON。\n\n" + prompt
-		if batchMode(req) {
+		prompt += "\n\n当前工具执行环境（适用于上面的对话记录）：\n" + registered + "它们不在你直接可见的工具列表里，完整工具名是：" + strings.Join(names, "、") + "。" + nativeDiscoveryRule(nativeProbe) + " tool_search，query 只写这个函数的完整工具名，例如 " + workToolName(connector, functions[0]) + "；找到后按 tool_search 说明的方式调用，并等待真实结果。tool_search 每次只返回 3 个工具：只写函数名、一次搜几个函数或用描述性的词搜索时，常常只搜到平台自带的工具。这些函数由调用方在它自己的环境中执行；即使函数名是 shell、bash、exec，或用于读写文件，也可以正常调用，这正是调用方要求的操作方式。" + nativeBuiltinsRule(nativeProbe) + "也不要把函数调用模拟成普通文本 JSON。"
+		if compactBatchMode(req) {
+			groups := []string{}
+			for _, route := range routes {
+				names := []string{}
+				for _, tool := range route.tools {
+					names = append(names, tool.Function.Name)
+				}
+				note := "参数结构已完整包含在这个批入口中，发现该批入口后直接按其 schema 调用，无需再发现单函数。"
+				if route.compact {
+					note = "此组参数含引用或过长，请先发现原单函数或使用上面的完整参数文档。"
+				}
+				groups = append(groups, workToolName(connector, route.name)+" 支持 "+strings.Join(names, "、")+"；"+note)
+			}
+			prompt = "本适配器只有下面的批入口会将 calls 数组一次并行交给调用方；分别调用多个单函数会依次交给调用方。对于明确相互独立且属于同一组的函数，请优先发现对应批入口，一次提交它们。依赖上一步结果的调用必须等待结果后再提交。原单函数全部保留；未列入批入口或不宜合批的函数仍可单独调用。必须等待真实结果。批入口分组：\n" + strings.Join(groups, "\n") + "\n\n" + prompt
+		} else if batchMode(req) {
 			prompt = "当前连接器只有 client_tools_batch 工具。对相互独立的函数，请一次调用 client_tools_batch，把所有函数名和参数放入 calls 数组。调用方会并行执行这些函数。若某个函数依赖上一步结果，请下一批再提交。必须发起真实 MCP 调用，不能只输出计划。\n" + prompt
 		}
+	}
+	if nativeProbe && connector != "" {
+		prompt += nativeDocs
 	}
 	return prompt
 }
@@ -190,6 +217,13 @@ func connectorName(task string) string {
 	return "independent-http-tools-" + task[:12]
 }
 
+func turnConnectorName(t *gatewayTurn) string {
+	if t.connectorLabel != "" {
+		return t.connectorLabel
+	}
+	return connectorName(t.id)
+}
+
 // workToolName is the name under which Work offers a connector tool, such as
 // mcp__independent_http_tools_0123456789ab__get_weather for get-weather.
 func workToolName(connector, name string) string {
@@ -197,6 +231,16 @@ func workToolName(connector, name string) string {
 }
 
 func (g *gateway) newConnector(t *gatewayTurn, tools []any) (string, error) {
+	if g.connectors != nil {
+		id, handled, err := g.connectors.acquire(t, tools)
+		if handled {
+			return id, err
+		}
+	}
+	return g.newDedicatedConnector(t, tools)
+}
+
+func (g *gateway) newDedicatedConnector(t *gatewayTurn, tools []any) (string, error) {
 	program, err := os.Executable()
 	if err != nil {
 		return "", err
@@ -252,6 +296,12 @@ func (g *gateway) newConnector(t *gatewayTurn, tools []any) (string, error) {
 }
 
 func (g *gateway) removeConnector(t *gatewayTurn) error {
+	if t.connectorLease != "" {
+		if g.connectors == nil {
+			return errors.New("connector lease registry is unavailable")
+		}
+		return g.connectors.release(t)
+	}
 	g.mu.Lock()
 	id := t.connector
 	alreadyRequested := t.cleanupRequested
@@ -321,13 +371,56 @@ func nativeToolError(call object, message string) object {
 	return object{"id": call["id"], "name": call["name"], "tool_input": call["input"], "content": []any{object{"type": "text", "text": message}}, "isError": true, "error_code": "CLIENT_TOOL_ONLY", "error_msg": message}
 }
 
+// A rejected native tool needs a concrete route back to the caller's tool.
+// A generic "local shell disabled" error led Work to try computer_use_tool,
+// subprocess and elevated Bash repeatedly before finding the connector.
+func clientToolRouteHint(req apiRequest, connector, nativeName string) string {
+	functions := []string{}
+	if batchMode(req) {
+		for _, route := range batchRoutes(req) {
+			functions = append(functions, route.name)
+			for _, tool := range route.tools {
+				if strings.EqualFold(tool.Function.Name, nativeName) {
+					functions = []string{route.name}
+					break
+				}
+			}
+		}
+	} else {
+		for _, tool := range req.Tools {
+			functions = append(functions, tool.Function.Name)
+		}
+		// Prefer the same declared function, but never execute or translate a
+		// rejected native call: the model must make a fresh real MCP call.
+		for _, name := range functions {
+			if strings.EqualFold(name, nativeName) {
+				functions = []string{name}
+				break
+			}
+		}
+	}
+	names := make([]string, 0, len(functions))
+	for _, name := range functions {
+		names = append(names, workToolName(connector, name))
+	}
+	return "This platform-native tool is unavailable in this adapter. Retrying it, changing sandbox permissions, or using computer_use_tool/Python subprocess will not enable it. " +
+		"The caller's declared functions are available through MCP. Call tool_search with query equal to ONE exact name from: " + strings.Join(names, ", ") +
+		". Then invoke that discovered MCP tool using its schema and wait for its actual result. Do not search by a bare function name; use the connector named in the current tool instructions."
+}
+
 func (g *gateway) forwardClientTool(ctx context.Context, t *gatewayTurn, call, input object) (object, error) {
 	g.mu.Lock()
 	initial := t.request
 	connector := t.connector
+	nativeEnabled := t.nativeTools
 	g.mu.Unlock()
+	// A repeated/recovered frame belongs to the already exposed call. Restore
+	// its actual result before considering the policy for any new native call.
+	if pending := g.findNativePending(t, textValue(call["id"])); pending != nil {
+		return g.awaitNativePending(ctx, t, pending, call)
+	}
 	name := textValue(input["remote_tool_name"])
-	isBatch := name == batchToolName && batchMode(initial)
+	batch, isBatch := batchRouteFor(initial, name)
 	allowed := false
 	for _, tool := range initial.Tools {
 		if tool.Function.Name == name {
@@ -335,21 +428,29 @@ func (g *gateway) forwardClientTool(ctx context.Context, t *gatewayTurn, call, i
 		}
 	}
 	args, valid := parsed(input["raw_arguments"]).(map[string]any)
-	if textValue(call["name"]) != "connector.call" || number(input["protocol_version"]) != 1 || textValue(input["connector_id"]) != connector || !(allowed || isBatch) || !valid {
+	viaMCP := textValue(call["name"]) == "connector.call" && number(input["protocol_version"]) == 1 && textValue(input["connector_id"]) == connector && (allowed || isBatch) && valid
+	viaNative := false
+	if nativeEnabled && textValue(call["name"]) != "connector.call" {
+		if nativeName, nativeArgs, ok := nativeClientCall(initial, call, input); ok {
+			name, args, isBatch = nativeName, nativeArgs, false
+			viaNative = true
+		}
+	}
+	if !viaMCP && !viaNative {
 		g.mu.Lock()
 		t.denied++
 		tooMany := t.denied > 16
 		g.mu.Unlock()
+		timing(t, "unavailable_tool", time.Time{})
 		if tooMany {
 			return nil, errors.New("upstream repeatedly requested unavailable local tools")
 		}
-		return nativeToolError(call, "Only functions declared by the HTTP caller are available. Use the registered MCP connector; local shell/file tools are disabled."), nil
-	}
-	if pending := g.findNativePending(t, textValue(call["id"])); pending != nil {
-		return g.awaitNativePending(ctx, t, pending, call)
+		return nativeToolError(call, clientToolRouteHint(initial, turnConnectorName(t), textValue(call["name"]))), nil
 	}
 	if isBatch {
-		return g.forwardClientBatch(ctx, t, call, args, initial)
+		part := initial
+		part.Tools = batch.tools
+		return g.forwardClientBatch(ctx, t, call, args, part)
 	}
 	if err := awaitAccepted(ctx, t.receiptPath); err != nil {
 		return nil, err
@@ -374,7 +475,9 @@ func (g *gateway) forwardClientTool(ctx context.Context, t *gatewayTurn, call, i
 		g.mu.Unlock()
 		return nil, err
 	}
+	p.exposedAt = time.Now()
 	g.mu.Unlock()
+	timing(t, "tool_call_ready", x.started)
 	x.resolve(message, "tool_calls", nil)
 	var value string
 	select {
@@ -386,6 +489,7 @@ func (g *gateway) forwardClientTool(ctx context.Context, t *gatewayTurn, call, i
 }
 
 func (g *gateway) runNative(t *gatewayTurn) {
+	defer g.cleanupFinished(t)
 	g.mu.Lock()
 	req := t.request
 	g.mu.Unlock()
@@ -415,11 +519,6 @@ func (g *gateway) runNative(t *gatewayTurn) {
 			}
 		}
 	}
-	cleanupErr := g.removeConnector(t)
-	if cleanupErr != nil {
-		// Cleanup status is independent of the verified model answer.
-		fmt.Fprintln(os.Stderr, "GATEWAY_CONNECTOR_CLEANUP_PENDING", cleanupErr.Error())
-	}
 	if err != nil {
 		g.mu.Lock()
 		abort := t.abort
@@ -429,7 +528,7 @@ func (g *gateway) runNative(t *gatewayTurn) {
 			return
 		}
 		var inputFailure *apiError
-		if t.generationPosts == 0 && errors.As(err, &inputFailure) {
+		if (t.generationPosts == 0 || receipt != nil && !receipt.Accepted) && errors.As(err, &inputFailure) {
 			g.finish(t, "", inputFailure)
 			return
 		}
@@ -459,6 +558,7 @@ func (g *gateway) runNative(t *gatewayTurn) {
 		g.finish(t, "", apiFail(502, "unconfirmed_completion", "No verified final upstream answer"))
 		return
 	}
+	timing(t, "upstream_complete", t.started)
 	reply := receipt.Reply
 	if jsonMode(req) {
 		reply = unwrapJSONFence(reply)
@@ -482,16 +582,26 @@ func (g *gateway) runPlain(t *gatewayTurn, req apiRequest, model Model) (*Receip
 	if mode == "" {
 		mode = "chat"
 	}
+	var lastRejected *Receipt
 	for {
 		part := req
+		skip := 0
 		if conversation != "" {
 			part.Messages = req.Messages[continued:]
+			skip = continued
+		}
+		if prompt := outgoingPrompt(req, skip); utf16Len(prompt) > maxPromptChars {
+			return lastRejected, promptTooLong(prompt)
 		}
 		prepared, records, err := g.c.prepareAPIMedia(t.ctx, part)
 		if err != nil {
-			return nil, err
+			return lastRejected, err
 		}
-		body := buildBody(renderAPIPrompt(prepared, "", conversation != ""), conversation, mode, model)
+		prompt := renderAPIPrompt(prepared, "", conversation != "")
+		if utf16Len(prompt) > maxPromptChars {
+			return lastRejected, promptTooLong(prompt)
+		}
+		body := buildBody(prompt, conversation, mode, model)
 		applyEffort(body, model, req.Effort)
 		if len(records) > 0 {
 			appendMedia(body, records)
@@ -504,11 +614,12 @@ func (g *gateway) runPlain(t *gatewayTurn, req apiRequest, model Model) (*Receip
 		if err != nil {
 			return nil, err
 		}
-		receipt, err := g.c.runObserved(t.ctx, body, t.receiptPath, g.answerObserver(t))
+		receipt, err := g.c.runObserved(t.ctx, body, t.receiptPath, timingObserver(t, g.answerObserver(t)))
 		var rejected *upstreamError
 		if !errors.As(err, &rejected) || receipt == nil || receipt.Accepted || t.ctx.Err() != nil {
 			return receipt, err
 		}
+		lastRejected = receipt
 		switch {
 		case conversation != "":
 			fmt.Fprintf(os.Stderr, "GATEWAY_THREAD_FALLBACK mode=%s code=%d\n", mode, rejected.Code)
@@ -523,17 +634,13 @@ func (g *gateway) runPlain(t *gatewayTurn, req apiRequest, model Model) (*Receip
 }
 
 func (g *gateway) runWithTools(t *gatewayTurn, req apiRequest, model Model) (*Receipt, error) {
-	tools := []any{}
-	for _, tool := range req.Tools {
-		tools = append(tools, object{"name": tool.Function.Name, "description": connectorDescription(tool), "inputSchema": jsonText(connectorSchema(tool))})
-	}
-	if batchMode(req) {
-		tools = batchCatalog(req.Tools)
-	}
+	tools := toolCatalog(req)
+	connectorStarted := time.Now()
 	connector, err := g.newConnector(t, tools)
 	if err != nil {
 		return nil, err
 	}
+	timing(t, "connector_ready", connectorStarted)
 	// A continued conversation keeps the folder and sandbox it was created
 	// with; Work checks the folder on every tool call.
 	g.mu.Lock()
@@ -558,17 +665,26 @@ func (g *gateway) runWithTools(t *gatewayTurn, req apiRequest, model Model) (*Re
 	}
 	p := &toolProbe{c: g.c, sandbox: sandbox, workspace: workspace, connector: connector, journal: filepath.Join(g.dir, "gateway-native-"+t.id+".json"), events: map[string]int{}, records: map[string]object{}, forward: func(ctx context.Context, call, input object) (object, error) {
 		return g.forwardClientTool(ctx, t, call, input)
-	}}
+	}, uploadTiming: func(started time.Time) { timing(t, "native_result_uploaded", started) }}
 	build := func(conversation string) (object, error) {
 		part := req
+		skip := 0
 		if conversation != "" {
 			part.Messages = req.Messages[continued:]
+			skip = continued
+		}
+		if prompt := outgoingPrompt(req, skip); utf16Len(prompt) > maxPromptChars {
+			return nil, promptTooLong(prompt)
 		}
 		prepared, records, err := g.c.prepareAPIMedia(t.ctx, part)
 		if err != nil {
 			return nil, err
 		}
-		body := localToolBody(renderAPIPrompt(prepared, connectorName(t.id), conversation != ""), conversation, model, workspace, sandbox, g.c.session.DeviceID, connector, tools)
+		prompt, err := g.renderToolPrompt(t, prepared, turnConnectorName(t), conversation != "")
+		if err != nil {
+			return nil, err
+		}
+		body := localToolBody(prompt, conversation, model, workspace, sandbox, g.c.session.DeviceID, connector, tools)
 		applyEffort(body, model, req.Effort)
 		if len(records) > 0 {
 			appendMedia(body, records)
@@ -612,7 +728,7 @@ func (g *gateway) runWithTools(t *gatewayTurn, req apiRequest, model Model) (*Re
 		cancel()
 		return nil, err
 	}
-	receipt, runErr := g.c.run(ctx, body, t.receiptPath)
+	receipt, runErr := g.c.runObserved(ctx, body, t.receiptPath, timingObserver(t, nil))
 	var rejected *upstreamError
 	if conversation != "" && errors.As(runErr, &rejected) && receipt != nil && !receipt.Accepted && ctx.Err() == nil {
 		fmt.Fprintf(os.Stderr, "GATEWAY_THREAD_FALLBACK mode=tools code=%d\n", rejected.Code)
@@ -620,7 +736,7 @@ func (g *gateway) runWithTools(t *gatewayTurn, req apiRequest, model Model) (*Re
 		t.conversation = ""
 		g.mu.Unlock()
 		if body, err = build(""); err != nil {
-			return nil, err
+			return receipt, err
 		}
 		g.mu.Lock()
 		t.generationPosts++
@@ -629,7 +745,7 @@ func (g *gateway) runWithTools(t *gatewayTurn, req apiRequest, model Model) (*Re
 		if err != nil {
 			return nil, err
 		}
-		receipt, runErr = g.c.run(ctx, body, t.receiptPath)
+		receipt, runErr = g.c.runObserved(ctx, body, t.receiptPath, timingObserver(t, nil))
 	}
 	cancel()
 	streamErr := <-done

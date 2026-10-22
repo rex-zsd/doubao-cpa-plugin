@@ -1,0 +1,2447 @@
+{
+  "production": {
+    "config_sha256_unchanged": true,
+    "plugin_sha256_unchanged": true,
+    "container_id_unchanged": true,
+    "production_not_restarted_during_probe": true,
+    "device_distinct": true,
+    "isolated_active_tasks": 0,
+    "isolated_cleanup_pending": 0,
+    "isolated_helper_stopped": true,
+    "isolated_loopback_port_closed": true
+  },
+  "totals": [
+    {
+      "phase": "baseline",
+      "attempts": 6,
+      "exact_answers_ok": 6,
+      "semantic_answers_ok": 6,
+      "native_paths_proven": 0,
+      "format_only_differences": 0
+    },
+    {
+      "phase": "native",
+      "attempts": 2,
+      "exact_answers_ok": 2,
+      "semantic_answers_ok": 2,
+      "native_paths_proven": 0,
+      "format_only_differences": 0
+    },
+    {
+      "phase": "native-v2",
+      "attempts": 6,
+      "exact_answers_ok": 5,
+      "semantic_answers_ok": 6,
+      "native_paths_proven": 6,
+      "format_only_differences": 1
+    },
+    {
+      "phase": "native-v2-strict",
+      "attempts": 1,
+      "exact_answers_ok": 1,
+      "semantic_answers_ok": 1,
+      "native_paths_proven": 1,
+      "format_only_differences": 0
+    }
+  ],
+  "summary": [
+    {
+      "phase": "baseline",
+      "case": "bash_error",
+      "n": 1,
+      "first_tool_median_seconds": 23.73,
+      "total_median_seconds": 31.434,
+      "all_answers_ok": true,
+      "all_native_path_proven": false,
+      "all_single_generation": true,
+      "all_catalog_retained": true,
+      "all_cleanup_confirmed": true
+    },
+    {
+      "phase": "baseline",
+      "case": "bash_success",
+      "n": 2,
+      "first_tool_median_seconds": 26.459,
+      "total_median_seconds": 35.341,
+      "all_answers_ok": true,
+      "all_native_path_proven": false,
+      "all_single_generation": true,
+      "all_catalog_retained": true,
+      "all_cleanup_confirmed": true
+    },
+    {
+      "phase": "baseline",
+      "case": "dependency",
+      "n": 1,
+      "first_tool_median_seconds": 18.58,
+      "total_median_seconds": 45.866,
+      "all_answers_ok": true,
+      "all_native_path_proven": false,
+      "all_single_generation": true,
+      "all_catalog_retained": true,
+      "all_cleanup_confirmed": true
+    },
+    {
+      "phase": "baseline",
+      "case": "read_once",
+      "n": 2,
+      "first_tool_median_seconds": 22.207,
+      "total_median_seconds": 30.018,
+      "all_answers_ok": true,
+      "all_native_path_proven": false,
+      "all_single_generation": true,
+      "all_catalog_retained": true,
+      "all_cleanup_confirmed": true
+    },
+    {
+      "phase": "native",
+      "case": "bash_success",
+      "n": 1,
+      "first_tool_median_seconds": 31.552,
+      "total_median_seconds": 39.743,
+      "all_answers_ok": true,
+      "all_native_path_proven": false,
+      "all_single_generation": true,
+      "all_catalog_retained": true,
+      "all_cleanup_confirmed": true
+    },
+    {
+      "phase": "native",
+      "case": "read_once",
+      "n": 1,
+      "first_tool_median_seconds": 22.692,
+      "total_median_seconds": 28.864,
+      "all_answers_ok": true,
+      "all_native_path_proven": false,
+      "all_single_generation": true,
+      "all_catalog_retained": true,
+      "all_cleanup_confirmed": true
+    },
+    {
+      "phase": "native-v2",
+      "case": "bash_success",
+      "n": 2,
+      "first_tool_median_seconds": 11.332,
+      "total_median_seconds": 22.692,
+      "all_answers_ok": true,
+      "all_native_path_proven": true,
+      "all_single_generation": true,
+      "all_catalog_retained": true,
+      "all_cleanup_confirmed": true
+    },
+    {
+      "phase": "native-v2",
+      "case": "dependency",
+      "n": 1,
+      "first_tool_median_seconds": 11.836,
+      "total_median_seconds": 29.507,
+      "all_answers_ok": true,
+      "all_native_path_proven": true,
+      "all_single_generation": true,
+      "all_catalog_retained": true,
+      "all_cleanup_confirmed": true
+    },
+    {
+      "phase": "native-v2",
+      "case": "read_once",
+      "n": 2,
+      "first_tool_median_seconds": 10.25,
+      "total_median_seconds": 16.922,
+      "all_answers_ok": true,
+      "all_native_path_proven": true,
+      "all_single_generation": true,
+      "all_catalog_retained": true,
+      "all_cleanup_confirmed": true
+    },
+    {
+      "phase": "native-v2-strict",
+      "case": "bash_error",
+      "n": 1,
+      "first_tool_median_seconds": 11.095,
+      "total_median_seconds": 19.642,
+      "all_answers_ok": true,
+      "all_native_path_proven": true,
+      "all_single_generation": true,
+      "all_catalog_retained": true,
+      "all_cleanup_confirmed": true
+    }
+  ],
+  "reports": [
+    {
+      "file": "native-v2-bash_success.json",
+      "report": {
+        "phase": "native-v2",
+        "case": "bash_success",
+        "model": "doubao-orange-5.5",
+        "effort": 7,
+        "tools": 32,
+        "parallel_tool_calls": false,
+        "real_external_execution": true,
+        "samples": [
+          {
+            "sample": 1,
+            "legs_seconds": [
+              11.162,
+              15.534
+            ],
+            "calls_per_leg": [
+              1,
+              0
+            ],
+            "executions": 1,
+            "client_seconds": 0.039,
+            "idempotent_replays": 1,
+            "argument_checks_ok": true,
+            "actual_exit_code": 0,
+            "answer_ok": true,
+            "total_seconds": 26.75,
+            "task_id": "2b6ccacb5dd49ecc4be5b2adfcaad3c4",
+            "done": true,
+            "generation_posts": 1,
+            "denied_tools": 0,
+            "forwarded_tools": 1,
+            "error_code": null,
+            "upstream_effort": "7",
+            "upstream_catalog_entries": 32,
+            "request_catalog_exact": true,
+            "full_catalog_retained": true,
+            "native_call_names": [
+              "Bash"
+            ],
+            "native_call_ids_unique": true,
+            "native_results_uploaded": 1,
+            "native_result_ids_match": true,
+            "native_direct_error_flags": [
+              false
+            ],
+            "native_direct_content_dto": true,
+            "native_path_proven": true,
+            "native_original_inputs_preserved": true,
+            "timing_stages": {
+              "task_start": [
+                {
+                  "elapsed_ms": 6,
+                  "duration_ms": 6
+                }
+              ],
+              "connector_ready": [
+                {
+                  "elapsed_ms": 738,
+                  "duration_ms": 730
+                }
+              ],
+              "upstream_ack_received": [
+                {
+                  "elapsed_ms": 2062,
+                  "duration_ms": 1292
+                }
+              ],
+              "upstream_timeout_control": [
+                {
+                  "elapsed_ms": 2311,
+                  "duration_ms": 1541
+                }
+              ],
+              "upstream_first_chunk": [
+                {
+                  "elapsed_ms": 2851,
+                  "duration_ms": 2081
+                }
+              ],
+              "native_result_uploaded": [
+                {
+                  "elapsed_ms": 3216,
+                  "duration_ms": 279
+                },
+                {
+                  "elapsed_ms": 4232,
+                  "duration_ms": 260
+                },
+                {
+                  "elapsed_ms": 11486,
+                  "duration_ms": 290
+                }
+              ],
+              "tool_call_ready": [
+                {
+                  "elapsed_ms": 11120,
+                  "duration_ms": 11120
+                }
+              ],
+              "client_result_received": [
+                {
+                  "elapsed_ms": 11192,
+                  "duration_ms": 71
+                }
+              ],
+              "upstream_stream_finished": [
+                {
+                  "elapsed_ms": 26010,
+                  "duration_ms": 25239
+                }
+              ],
+              "final_readback_done": [
+                {
+                  "elapsed_ms": 26666,
+                  "duration_ms": 655
+                }
+              ],
+              "upstream_complete": [
+                {
+                  "elapsed_ms": 26684,
+                  "duration_ms": 26684
+                }
+              ],
+              "final_ready": [
+                {
+                  "elapsed_ms": 26695,
+                  "duration_ms": 15510
+                }
+              ],
+              "cleanup_start": [
+                {
+                  "elapsed_ms": 26695,
+                  "duration_ms": 0
+                }
+              ],
+              "cleanup_done": [
+                {
+                  "elapsed_ms": 27559,
+                  "duration_ms": 863
+                }
+              ]
+            },
+            "cleanup_confirmed": true
+          },
+          {
+            "sample": 2,
+            "legs_seconds": [
+              11.502,
+              7.076
+            ],
+            "calls_per_leg": [
+              1,
+              0
+            ],
+            "executions": 1,
+            "client_seconds": 0.039,
+            "idempotent_replays": 1,
+            "argument_checks_ok": true,
+            "actual_exit_code": 0,
+            "answer_ok": true,
+            "semantic_answer_ok": true,
+            "format_only_difference": false,
+            "total_seconds": 18.634,
+            "task_id": "fd166772adadfea952efd0e57c5b9809",
+            "done": true,
+            "generation_posts": 1,
+            "denied_tools": 0,
+            "forwarded_tools": 1,
+            "error_code": null,
+            "upstream_effort": "7",
+            "upstream_catalog_entries": 32,
+            "request_catalog_exact": true,
+            "full_catalog_retained": true,
+            "native_call_names": [
+              "Bash"
+            ],
+            "native_call_ids_unique": true,
+            "native_results_uploaded": 1,
+            "native_result_ids_match": true,
+            "native_direct_error_flags": [
+              false
+            ],
+            "native_direct_content_dto": true,
+            "native_path_proven": true,
+            "native_original_inputs_preserved": true,
+            "timing_stages": {
+              "task_start": [
+                {
+                  "elapsed_ms": 12,
+                  "duration_ms": 12
+                }
+              ],
+              "connector_ready": [
+                {
+                  "elapsed_ms": 1006,
+                  "duration_ms": 992
+                }
+              ],
+              "upstream_ack_received": [
+                {
+                  "elapsed_ms": 2828,
+                  "duration_ms": 1804
+                }
+              ],
+              "upstream_timeout_control": [
+                {
+                  "elapsed_ms": 2948,
+                  "duration_ms": 1925
+                }
+              ],
+              "upstream_first_chunk": [
+                {
+                  "elapsed_ms": 3604,
+                  "duration_ms": 2581
+                }
+              ],
+              "native_result_uploaded": [
+                {
+                  "elapsed_ms": 4062,
+                  "duration_ms": 417
+                },
+                {
+                  "elapsed_ms": 5104,
+                  "duration_ms": 407
+                },
+                {
+                  "elapsed_ms": 11918,
+                  "duration_ms": 407
+                }
+              ],
+              "tool_call_ready": [
+                {
+                  "elapsed_ms": 11432,
+                  "duration_ms": 11432
+                }
+              ],
+              "client_result_received": [
+                {
+                  "elapsed_ms": 11507,
+                  "duration_ms": 75
+                }
+              ],
+              "upstream_stream_finished": [
+                {
+                  "elapsed_ms": 17781,
+                  "duration_ms": 16757
+                }
+              ],
+              "final_readback_done": [
+                {
+                  "elapsed_ms": 18528,
+                  "duration_ms": 746
+                }
+              ],
+              "upstream_complete": [
+                {
+                  "elapsed_ms": 18539,
+                  "duration_ms": 18539
+                }
+              ],
+              "final_ready": [
+                {
+                  "elapsed_ms": 18551,
+                  "duration_ms": 7050
+                }
+              ],
+              "cleanup_start": [
+                {
+                  "elapsed_ms": 18551,
+                  "duration_ms": 0
+                }
+              ],
+              "cleanup_done": [
+                {
+                  "elapsed_ms": 19577,
+                  "duration_ms": 1026
+                }
+              ]
+            },
+            "cleanup_confirmed": true
+          }
+        ]
+      }
+    },
+    {
+      "file": "native-v2-strict-bash_error.json",
+      "report": {
+        "phase": "native-v2-strict",
+        "case": "bash_error",
+        "model": "doubao-orange-5.5",
+        "effort": 7,
+        "tools": 32,
+        "parallel_tool_calls": false,
+        "real_external_execution": true,
+        "samples": [
+          {
+            "sample": 1,
+            "legs_seconds": [
+              11.095,
+              8.489
+            ],
+            "calls_per_leg": [
+              1,
+              0
+            ],
+            "executions": 1,
+            "client_seconds": 0.043,
+            "idempotent_replays": 1,
+            "argument_checks_ok": true,
+            "actual_exit_code": 7,
+            "answer_ok": true,
+            "semantic_answer_ok": true,
+            "format_only_difference": false,
+            "total_seconds": 19.642,
+            "task_id": "93ce45e98cfb7509e2131fcf7f93d7e2",
+            "done": true,
+            "generation_posts": 1,
+            "denied_tools": 0,
+            "forwarded_tools": 1,
+            "error_code": null,
+            "upstream_effort": "7",
+            "upstream_catalog_entries": 32,
+            "request_catalog_exact": true,
+            "full_catalog_retained": true,
+            "native_call_names": [
+              "Bash"
+            ],
+            "native_call_ids_unique": true,
+            "native_results_uploaded": 1,
+            "native_result_ids_match": true,
+            "native_direct_error_flags": [
+              true
+            ],
+            "native_direct_content_dto": true,
+            "native_path_proven": true,
+            "native_original_inputs_preserved": true,
+            "timing_stages": {
+              "task_start": [
+                {
+                  "elapsed_ms": 12,
+                  "duration_ms": 12
+                }
+              ],
+              "connector_ready": [
+                {
+                  "elapsed_ms": 732,
+                  "duration_ms": 718
+                }
+              ],
+              "upstream_ack_received": [
+                {
+                  "elapsed_ms": 1863,
+                  "duration_ms": 1097
+                }
+              ],
+              "upstream_timeout_control": [
+                {
+                  "elapsed_ms": 1951,
+                  "duration_ms": 1185
+                }
+              ],
+              "upstream_first_chunk": [
+                {
+                  "elapsed_ms": 2755,
+                  "duration_ms": 1988
+                }
+              ],
+              "native_result_uploaded": [
+                {
+                  "elapsed_ms": 3161,
+                  "duration_ms": 271
+                },
+                {
+                  "elapsed_ms": 4205,
+                  "duration_ms": 266
+                },
+                {
+                  "elapsed_ms": 11370,
+                  "duration_ms": 273
+                }
+              ],
+              "tool_call_ready": [
+                {
+                  "elapsed_ms": 11017,
+                  "duration_ms": 11017
+                }
+              ],
+              "client_result_received": [
+                {
+                  "elapsed_ms": 11093,
+                  "duration_ms": 76
+                }
+              ],
+              "upstream_stream_finished": [
+                {
+                  "elapsed_ms": 18732,
+                  "duration_ms": 17966
+                }
+              ],
+              "final_readback_done": [
+                {
+                  "elapsed_ms": 19528,
+                  "duration_ms": 795
+                }
+              ],
+              "upstream_complete": [
+                {
+                  "elapsed_ms": 19541,
+                  "duration_ms": 19541
+                }
+              ],
+              "final_ready": [
+                {
+                  "elapsed_ms": 19553,
+                  "duration_ms": 8467
+                }
+              ],
+              "cleanup_start": [
+                {
+                  "elapsed_ms": 19553,
+                  "duration_ms": 0
+                }
+              ],
+              "cleanup_done": [
+                {
+                  "elapsed_ms": 20318,
+                  "duration_ms": 765
+                }
+              ]
+            },
+            "cleanup_confirmed": true
+          }
+        ]
+      }
+    },
+    {
+      "file": "native-read_once.json",
+      "report": {
+        "phase": "native",
+        "case": "read_once",
+        "model": "doubao-orange-5.5",
+        "effort": 7,
+        "tools": 32,
+        "parallel_tool_calls": false,
+        "real_external_execution": true,
+        "samples": [
+          {
+            "sample": 1,
+            "legs_seconds": [
+              22.692,
+              6.149
+            ],
+            "calls_per_leg": [
+              1,
+              0
+            ],
+            "executions": 1,
+            "client_seconds": 0.0,
+            "idempotent_replays": 1,
+            "argument_checks_ok": true,
+            "answer_ok": true,
+            "total_seconds": 28.864,
+            "task_id": "5d6d1b7c9fd60e0337ae080903e0fae1",
+            "done": true,
+            "generation_posts": 1,
+            "denied_tools": 1,
+            "forwarded_tools": 1,
+            "error_code": null,
+            "upstream_effort": "7",
+            "upstream_catalog_entries": 32,
+            "full_catalog_retained": true,
+            "native_call_names": [
+              "Read",
+              "connector.call"
+            ],
+            "native_call_ids_unique": true,
+            "native_results_uploaded": 2,
+            "native_result_ids_match": true,
+            "native_direct_error_flags": [
+              true,
+              null
+            ],
+            "native_direct_content_dto": false,
+            "timing_stages": {
+              "task_start": [
+                {
+                  "elapsed_ms": 6,
+                  "duration_ms": 6
+                }
+              ],
+              "connector_ready": [
+                {
+                  "elapsed_ms": 726,
+                  "duration_ms": 718
+                }
+              ],
+              "upstream_ack_received": [
+                {
+                  "elapsed_ms": 1881,
+                  "duration_ms": 1106
+                }
+              ],
+              "upstream_timeout_control": [
+                {
+                  "elapsed_ms": 2090,
+                  "duration_ms": 1315
+                }
+              ],
+              "upstream_first_chunk": [
+                {
+                  "elapsed_ms": 2608,
+                  "duration_ms": 1833
+                }
+              ],
+              "native_result_uploaded": [
+                {
+                  "elapsed_ms": 2927,
+                  "duration_ms": 253
+                },
+                {
+                  "elapsed_ms": 3970,
+                  "duration_ms": 256
+                },
+                {
+                  "elapsed_ms": 9509,
+                  "duration_ms": 273
+                },
+                {
+                  "elapsed_ms": 22962,
+                  "duration_ms": 258
+                }
+              ],
+              "unavailable_tool": [
+                {
+                  "elapsed_ms": 9231,
+                  "duration_ms": -1
+                }
+              ],
+              "tool_call_ready": [
+                {
+                  "elapsed_ms": 22647,
+                  "duration_ms": 22647
+                }
+              ],
+              "client_result_received": [
+                {
+                  "elapsed_ms": 22699,
+                  "duration_ms": 52
+                }
+              ],
+              "upstream_stream_finished": [
+                {
+                  "elapsed_ms": 28159,
+                  "duration_ms": 27383
+                }
+              ],
+              "final_readback_done": [
+                {
+                  "elapsed_ms": 28795,
+                  "duration_ms": 636
+                }
+              ],
+              "upstream_complete": [
+                {
+                  "elapsed_ms": 28809,
+                  "duration_ms": 28809
+                }
+              ],
+              "final_ready": [
+                {
+                  "elapsed_ms": 28817,
+                  "duration_ms": 6126
+                }
+              ],
+              "cleanup_start": [
+                {
+                  "elapsed_ms": 28817,
+                  "duration_ms": 0
+                }
+              ],
+              "cleanup_done": [
+                {
+                  "elapsed_ms": 29554,
+                  "duration_ms": 736
+                }
+              ]
+            },
+            "cleanup_confirmed": true,
+            "native_path_proven": false
+          }
+        ]
+      }
+    },
+    {
+      "file": "native-v2-bash_error.json",
+      "report": {
+        "phase": "native-v2",
+        "case": "bash_error",
+        "model": "doubao-orange-5.5",
+        "effort": 7,
+        "tools": 32,
+        "parallel_tool_calls": false,
+        "real_external_execution": true,
+        "samples": [
+          {
+            "sample": 1,
+            "legs_seconds": [
+              9.026,
+              8.59
+            ],
+            "calls_per_leg": [
+              1,
+              0
+            ],
+            "executions": 1,
+            "client_seconds": 0.049,
+            "idempotent_replays": 1,
+            "argument_checks_ok": true,
+            "actual_exit_code": 7,
+            "answer_ok": false,
+            "failure_type": "AssertionError",
+            "http_status": null,
+            "total_seconds": 17.678,
+            "task_id": "53bdf5b8fe4eb7881b8b16a1569ffd1c",
+            "done": true,
+            "generation_posts": 1,
+            "denied_tools": 0,
+            "forwarded_tools": 1,
+            "error_code": null,
+            "upstream_effort": "7",
+            "upstream_catalog_entries": 32,
+            "request_catalog_exact": true,
+            "full_catalog_retained": true,
+            "native_call_names": [
+              "Bash"
+            ],
+            "native_call_ids_unique": true,
+            "native_results_uploaded": 1,
+            "native_result_ids_match": true,
+            "native_direct_error_flags": [
+              true
+            ],
+            "native_direct_content_dto": true,
+            "native_path_proven": true,
+            "native_original_inputs_preserved": true,
+            "timing_stages": {
+              "task_start": [
+                {
+                  "elapsed_ms": 14,
+                  "duration_ms": 14
+                }
+              ],
+              "connector_ready": [
+                {
+                  "elapsed_ms": 791,
+                  "duration_ms": 775
+                }
+              ],
+              "upstream_ack_received": [
+                {
+                  "elapsed_ms": 1992,
+                  "duration_ms": 1152
+                }
+              ],
+              "upstream_timeout_control": [
+                {
+                  "elapsed_ms": 2229,
+                  "duration_ms": 1390
+                }
+              ],
+              "upstream_first_chunk": [
+                {
+                  "elapsed_ms": 2866,
+                  "duration_ms": 2027
+                }
+              ],
+              "native_result_uploaded": [
+                {
+                  "elapsed_ms": 3214,
+                  "duration_ms": 269
+                },
+                {
+                  "elapsed_ms": 4252,
+                  "duration_ms": 255
+                },
+                {
+                  "elapsed_ms": 9344,
+                  "duration_ms": 277
+                }
+              ],
+              "tool_call_ready": [
+                {
+                  "elapsed_ms": 8985,
+                  "duration_ms": 8985
+                }
+              ],
+              "client_result_received": [
+                {
+                  "elapsed_ms": 9063,
+                  "duration_ms": 78
+                }
+              ],
+              "upstream_stream_finished": [
+                {
+                  "elapsed_ms": 16962,
+                  "duration_ms": 16122
+                }
+              ],
+              "final_readback_done": [
+                {
+                  "elapsed_ms": 17605,
+                  "duration_ms": 643
+                }
+              ],
+              "upstream_complete": [
+                {
+                  "elapsed_ms": 17624,
+                  "duration_ms": 17624
+                }
+              ],
+              "final_ready": [
+                {
+                  "elapsed_ms": 17633,
+                  "duration_ms": 8576
+                }
+              ],
+              "cleanup_start": [
+                {
+                  "elapsed_ms": 17633,
+                  "duration_ms": 0
+                }
+              ],
+              "cleanup_done": [
+                {
+                  "elapsed_ms": 18436,
+                  "duration_ms": 802
+                }
+              ]
+            },
+            "cleanup_confirmed": true,
+            "semantic_answer_ok": true,
+            "format_only_difference": true
+          }
+        ]
+      }
+    },
+    {
+      "file": "native-v2-read_once.json",
+      "report": {
+        "phase": "native-v2",
+        "case": "read_once",
+        "model": "doubao-orange-5.5",
+        "effort": 7,
+        "tools": 32,
+        "parallel_tool_calls": false,
+        "real_external_execution": true,
+        "samples": [
+          {
+            "sample": 1,
+            "legs_seconds": [
+              9.86,
+              7.246
+            ],
+            "calls_per_leg": [
+              1,
+              0
+            ],
+            "executions": 1,
+            "client_seconds": 0.0,
+            "idempotent_replays": 1,
+            "argument_checks_ok": true,
+            "answer_ok": true,
+            "total_seconds": 17.121,
+            "task_id": "e1aca14004b4e45720cbf5121b58df9c",
+            "done": true,
+            "generation_posts": 1,
+            "denied_tools": 0,
+            "forwarded_tools": 1,
+            "error_code": null,
+            "upstream_effort": "7",
+            "upstream_catalog_entries": 32,
+            "request_catalog_exact": true,
+            "full_catalog_retained": true,
+            "native_call_names": [
+              "Read"
+            ],
+            "native_call_ids_unique": true,
+            "native_results_uploaded": 1,
+            "native_result_ids_match": true,
+            "native_direct_error_flags": [
+              false
+            ],
+            "native_direct_content_dto": true,
+            "native_path_proven": true,
+            "native_original_inputs_preserved": true,
+            "timing_stages": {
+              "task_start": [
+                {
+                  "elapsed_ms": 6,
+                  "duration_ms": 6
+                }
+              ],
+              "connector_ready": [
+                {
+                  "elapsed_ms": 745,
+                  "duration_ms": 737
+                }
+              ],
+              "upstream_ack_received": [
+                {
+                  "elapsed_ms": 2123,
+                  "duration_ms": 1351
+                }
+              ],
+              "upstream_timeout_control": [
+                {
+                  "elapsed_ms": 2384,
+                  "duration_ms": 1611
+                }
+              ],
+              "upstream_first_chunk": [
+                {
+                  "elapsed_ms": 2894,
+                  "duration_ms": 2121
+                }
+              ],
+              "native_result_uploaded": [
+                {
+                  "elapsed_ms": 3236,
+                  "duration_ms": 268
+                },
+                {
+                  "elapsed_ms": 4281,
+                  "duration_ms": 257
+                },
+                {
+                  "elapsed_ms": 10130,
+                  "duration_ms": 276
+                }
+              ],
+              "tool_call_ready": [
+                {
+                  "elapsed_ms": 9820,
+                  "duration_ms": 9820
+                }
+              ],
+              "client_result_received": [
+                {
+                  "elapsed_ms": 9850,
+                  "duration_ms": 30
+                }
+              ],
+              "upstream_stream_finished": [
+                {
+                  "elapsed_ms": 16358,
+                  "duration_ms": 15586
+                }
+              ],
+              "final_readback_done": [
+                {
+                  "elapsed_ms": 17043,
+                  "duration_ms": 685
+                }
+              ],
+              "upstream_complete": [
+                {
+                  "elapsed_ms": 17059,
+                  "duration_ms": 17059
+                }
+              ],
+              "final_ready": [
+                {
+                  "elapsed_ms": 17069,
+                  "duration_ms": 7224
+                }
+              ],
+              "cleanup_start": [
+                {
+                  "elapsed_ms": 17069,
+                  "duration_ms": 0
+                }
+              ],
+              "cleanup_done": [
+                {
+                  "elapsed_ms": 17824,
+                  "duration_ms": 754
+                }
+              ]
+            },
+            "cleanup_confirmed": true
+          },
+          {
+            "sample": 2,
+            "legs_seconds": [
+              10.641,
+              6.071
+            ],
+            "calls_per_leg": [
+              1,
+              0
+            ],
+            "executions": 1,
+            "client_seconds": 0.0,
+            "idempotent_replays": 1,
+            "argument_checks_ok": true,
+            "answer_ok": true,
+            "semantic_answer_ok": true,
+            "format_only_difference": false,
+            "total_seconds": 16.723,
+            "task_id": "c0ea4de502b3e2427d30ec0d050608ea",
+            "done": true,
+            "generation_posts": 1,
+            "denied_tools": 0,
+            "forwarded_tools": 1,
+            "error_code": null,
+            "upstream_effort": "7",
+            "upstream_catalog_entries": 32,
+            "request_catalog_exact": true,
+            "full_catalog_retained": true,
+            "native_call_names": [
+              "Read"
+            ],
+            "native_call_ids_unique": true,
+            "native_results_uploaded": 1,
+            "native_result_ids_match": true,
+            "native_direct_error_flags": [
+              false
+            ],
+            "native_direct_content_dto": true,
+            "native_path_proven": true,
+            "native_original_inputs_preserved": true,
+            "timing_stages": {
+              "task_start": [
+                {
+                  "elapsed_ms": 7,
+                  "duration_ms": 7
+                }
+              ],
+              "connector_ready": [
+                {
+                  "elapsed_ms": 1006,
+                  "duration_ms": 997
+                }
+              ],
+              "upstream_ack_received": [
+                {
+                  "elapsed_ms": 3791,
+                  "duration_ms": 2752
+                }
+              ],
+              "upstream_timeout_control": [
+                {
+                  "elapsed_ms": 3923,
+                  "duration_ms": 2884
+                }
+              ],
+              "upstream_first_chunk": [
+                {
+                  "elapsed_ms": 4547,
+                  "duration_ms": 3508
+                }
+              ],
+              "native_result_uploaded": [
+                {
+                  "elapsed_ms": 5046,
+                  "duration_ms": 402
+                },
+                {
+                  "elapsed_ms": 6084,
+                  "duration_ms": 394
+                },
+                {
+                  "elapsed_ms": 11040,
+                  "duration_ms": 403
+                }
+              ],
+              "tool_call_ready": [
+                {
+                  "elapsed_ms": 10602,
+                  "duration_ms": 10602
+                }
+              ],
+              "client_result_received": [
+                {
+                  "elapsed_ms": 10632,
+                  "duration_ms": 30
+                }
+              ],
+              "upstream_stream_finished": [
+                {
+                  "elapsed_ms": 15835,
+                  "duration_ms": 14796
+                }
+              ],
+              "final_readback_done": [
+                {
+                  "elapsed_ms": 16651,
+                  "duration_ms": 815
+                }
+              ],
+              "upstream_complete": [
+                {
+                  "elapsed_ms": 16667,
+                  "duration_ms": 16667
+                }
+              ],
+              "final_ready": [
+                {
+                  "elapsed_ms": 16675,
+                  "duration_ms": 6049
+                }
+              ],
+              "cleanup_start": [
+                {
+                  "elapsed_ms": 16675,
+                  "duration_ms": 0
+                }
+              ],
+              "cleanup_done": [
+                {
+                  "elapsed_ms": 17661,
+                  "duration_ms": 985
+                }
+              ]
+            },
+            "cleanup_confirmed": true
+          }
+        ]
+      }
+    },
+    {
+      "file": "native-v2-dependency.json",
+      "report": {
+        "phase": "native-v2",
+        "case": "dependency",
+        "model": "doubao-orange-5.5",
+        "effort": 7,
+        "tools": 32,
+        "parallel_tool_calls": false,
+        "real_external_execution": true,
+        "samples": [
+          {
+            "sample": 1,
+            "legs_seconds": [
+              11.836,
+              10.389,
+              7.201
+            ],
+            "calls_per_leg": [
+              1,
+              1,
+              0
+            ],
+            "executions": 2,
+            "client_seconds": 0.04,
+            "idempotent_replays": 2,
+            "argument_checks_ok": true,
+            "actual_exit_code": 0,
+            "answer_ok": true,
+            "total_seconds": 29.507,
+            "task_id": "007e9103ef402fe350c8c471c2b45193",
+            "done": true,
+            "generation_posts": 1,
+            "denied_tools": 0,
+            "forwarded_tools": 2,
+            "error_code": null,
+            "upstream_effort": "7",
+            "upstream_catalog_entries": 32,
+            "request_catalog_exact": true,
+            "full_catalog_retained": true,
+            "native_call_names": [
+              "Read",
+              "Bash"
+            ],
+            "native_call_ids_unique": true,
+            "native_results_uploaded": 2,
+            "native_result_ids_match": true,
+            "native_direct_error_flags": [
+              false,
+              false
+            ],
+            "native_direct_content_dto": true,
+            "native_path_proven": true,
+            "native_original_inputs_preserved": true,
+            "timing_stages": {
+              "task_start": [
+                {
+                  "elapsed_ms": 6,
+                  "duration_ms": 6
+                }
+              ],
+              "connector_ready": [
+                {
+                  "elapsed_ms": 723,
+                  "duration_ms": 716
+                }
+              ],
+              "upstream_ack_received": [
+                {
+                  "elapsed_ms": 1647,
+                  "duration_ms": 893
+                }
+              ],
+              "upstream_timeout_control": [
+                {
+                  "elapsed_ms": 1787,
+                  "duration_ms": 1034
+                }
+              ],
+              "upstream_first_chunk": [
+                {
+                  "elapsed_ms": 2429,
+                  "duration_ms": 1675
+                }
+              ],
+              "native_result_uploaded": [
+                {
+                  "elapsed_ms": 2808,
+                  "duration_ms": 284
+                },
+                {
+                  "elapsed_ms": 3833,
+                  "duration_ms": 260
+                },
+                {
+                  "elapsed_ms": 12126,
+                  "duration_ms": 269
+                },
+                {
+                  "elapsed_ms": 22558,
+                  "duration_ms": 270
+                }
+              ],
+              "tool_call_ready": [
+                {
+                  "elapsed_ms": 11796,
+                  "duration_ms": 11796
+                },
+                {
+                  "elapsed_ms": 22213,
+                  "duration_ms": 10368
+                }
+              ],
+              "client_result_received": [
+                {
+                  "elapsed_ms": 11852,
+                  "duration_ms": 55
+                },
+                {
+                  "elapsed_ms": 22284,
+                  "duration_ms": 70
+                }
+              ],
+              "upstream_stream_finished": [
+                {
+                  "elapsed_ms": 28796,
+                  "duration_ms": 28042
+                }
+              ],
+              "final_readback_done": [
+                {
+                  "elapsed_ms": 29409,
+                  "duration_ms": 613
+                }
+              ],
+              "upstream_complete": [
+                {
+                  "elapsed_ms": 29432,
+                  "duration_ms": 29432
+                }
+              ],
+              "final_ready": [
+                {
+                  "elapsed_ms": 29458,
+                  "duration_ms": 7179
+                }
+              ],
+              "cleanup_start": [
+                {
+                  "elapsed_ms": 29458,
+                  "duration_ms": 0
+                }
+              ],
+              "cleanup_done": [
+                {
+                  "elapsed_ms": 30196,
+                  "duration_ms": 738
+                }
+              ]
+            },
+            "cleanup_confirmed": true
+          }
+        ]
+      }
+    },
+    {
+      "file": "native-bash_success.json",
+      "report": {
+        "phase": "native",
+        "case": "bash_success",
+        "model": "doubao-orange-5.5",
+        "effort": 7,
+        "tools": 32,
+        "parallel_tool_calls": false,
+        "real_external_execution": true,
+        "samples": [
+          {
+            "sample": 1,
+            "legs_seconds": [
+              31.552,
+              8.126
+            ],
+            "calls_per_leg": [
+              1,
+              0
+            ],
+            "executions": 1,
+            "client_seconds": 0.044,
+            "idempotent_replays": 1,
+            "argument_checks_ok": true,
+            "actual_exit_code": 0,
+            "answer_ok": true,
+            "total_seconds": 39.743,
+            "task_id": "ad282f80414b87483a3990ad805b04e1",
+            "done": true,
+            "generation_posts": 1,
+            "denied_tools": 1,
+            "forwarded_tools": 1,
+            "error_code": null,
+            "upstream_effort": "7",
+            "upstream_catalog_entries": 32,
+            "full_catalog_retained": true,
+            "native_call_names": [
+              "Bash",
+              "connector.call"
+            ],
+            "native_call_ids_unique": true,
+            "native_results_uploaded": 2,
+            "native_result_ids_match": true,
+            "native_direct_error_flags": [
+              null,
+              true
+            ],
+            "native_direct_content_dto": false,
+            "timing_stages": {
+              "task_start": [
+                {
+                  "elapsed_ms": 5,
+                  "duration_ms": 5
+                }
+              ],
+              "connector_ready": [
+                {
+                  "elapsed_ms": 703,
+                  "duration_ms": 696
+                }
+              ],
+              "upstream_ack_received": [
+                {
+                  "elapsed_ms": 1925,
+                  "duration_ms": 1205
+                }
+              ],
+              "upstream_timeout_control": [
+                {
+                  "elapsed_ms": 2157,
+                  "duration_ms": 1438
+                }
+              ],
+              "upstream_first_chunk": [
+                {
+                  "elapsed_ms": 2699,
+                  "duration_ms": 1979
+                }
+              ],
+              "native_result_uploaded": [
+                {
+                  "elapsed_ms": 3038,
+                  "duration_ms": 258
+                },
+                {
+                  "elapsed_ms": 4082,
+                  "duration_ms": 258
+                },
+                {
+                  "elapsed_ms": 14880,
+                  "duration_ms": 262
+                },
+                {
+                  "elapsed_ms": 29650,
+                  "duration_ms": 267
+                },
+                {
+                  "elapsed_ms": 30673,
+                  "duration_ms": 253
+                },
+                {
+                  "elapsed_ms": 31863,
+                  "duration_ms": 265
+                }
+              ],
+              "unavailable_tool": [
+                {
+                  "elapsed_ms": 14607,
+                  "duration_ms": -1
+                }
+              ],
+              "tool_call_ready": [
+                {
+                  "elapsed_ms": 31511,
+                  "duration_ms": 31511
+                }
+              ],
+              "client_result_received": [
+                {
+                  "elapsed_ms": 31593,
+                  "duration_ms": 82
+                }
+              ],
+              "upstream_stream_finished": [
+                {
+                  "elapsed_ms": 39004,
+                  "duration_ms": 38285
+                }
+              ],
+              "final_readback_done": [
+                {
+                  "elapsed_ms": 39673,
+                  "duration_ms": 668
+                }
+              ],
+              "upstream_complete": [
+                {
+                  "elapsed_ms": 39689,
+                  "duration_ms": 39689
+                }
+              ],
+              "final_ready": [
+                {
+                  "elapsed_ms": 39697,
+                  "duration_ms": 8110
+                }
+              ],
+              "cleanup_start": [
+                {
+                  "elapsed_ms": 39697,
+                  "duration_ms": 0
+                }
+              ],
+              "cleanup_done": [
+                {
+                  "elapsed_ms": 40467,
+                  "duration_ms": 769
+                }
+              ]
+            },
+            "cleanup_confirmed": true,
+            "native_path_proven": false
+          }
+        ]
+      }
+    },
+    {
+      "file": "baseline-read_once.json",
+      "report": {
+        "phase": "baseline",
+        "case": "read_once",
+        "model": "doubao-orange-5.5",
+        "effort": 7,
+        "tools": 32,
+        "parallel_tool_calls": false,
+        "real_external_execution": true,
+        "samples": [
+          {
+            "sample": 1,
+            "legs_seconds": [
+              23.846,
+              9.076
+            ],
+            "calls_per_leg": [
+              1,
+              0
+            ],
+            "executions": 1,
+            "client_seconds": 0.0,
+            "idempotent_replays": 1,
+            "argument_checks_ok": true,
+            "answer_ok": true,
+            "semantic_answer_ok": true,
+            "format_only_difference": false,
+            "total_seconds": 32.939,
+            "task_id": "86563746ecfa7f9330040f974a74b7d8",
+            "done": true,
+            "generation_posts": 1,
+            "denied_tools": 0,
+            "forwarded_tools": 1,
+            "error_code": null,
+            "upstream_effort": "7",
+            "upstream_catalog_entries": 32,
+            "request_catalog_exact": true,
+            "full_catalog_retained": true,
+            "native_call_names": [
+              "connector.call"
+            ],
+            "native_call_ids_unique": true,
+            "native_results_uploaded": 1,
+            "native_result_ids_match": true,
+            "native_direct_error_flags": [
+              null
+            ],
+            "native_direct_content_dto": false,
+            "native_path_proven": false,
+            "native_original_inputs_preserved": true,
+            "timing_stages": {
+              "task_start": [
+                {
+                  "elapsed_ms": 6,
+                  "duration_ms": 6
+                }
+              ],
+              "connector_ready": [
+                {
+                  "elapsed_ms": 730,
+                  "duration_ms": 722
+                }
+              ],
+              "upstream_ack_received": [
+                {
+                  "elapsed_ms": 2234,
+                  "duration_ms": 1471
+                }
+              ],
+              "upstream_timeout_control": [
+                {
+                  "elapsed_ms": 2320,
+                  "duration_ms": 1557
+                }
+              ],
+              "upstream_first_chunk": [
+                {
+                  "elapsed_ms": 2997,
+                  "duration_ms": 2234
+                }
+              ],
+              "native_result_uploaded": [
+                {
+                  "elapsed_ms": 3319,
+                  "duration_ms": 264
+                },
+                {
+                  "elapsed_ms": 4370,
+                  "duration_ms": 269
+                },
+                {
+                  "elapsed_ms": 24125,
+                  "duration_ms": 280
+                }
+              ],
+              "tool_call_ready": [
+                {
+                  "elapsed_ms": 23802,
+                  "duration_ms": 23802
+                }
+              ],
+              "client_result_received": [
+                {
+                  "elapsed_ms": 23841,
+                  "duration_ms": 38
+                }
+              ],
+              "upstream_stream_finished": [
+                {
+                  "elapsed_ms": 32232,
+                  "duration_ms": 31469
+                }
+              ],
+              "final_readback_done": [
+                {
+                  "elapsed_ms": 32877,
+                  "duration_ms": 645
+                }
+              ],
+              "upstream_complete": [
+                {
+                  "elapsed_ms": 32886,
+                  "duration_ms": 32886
+                }
+              ],
+              "final_ready": [
+                {
+                  "elapsed_ms": 32893,
+                  "duration_ms": 9058
+                }
+              ],
+              "cleanup_start": [
+                {
+                  "elapsed_ms": 32893,
+                  "duration_ms": 0
+                }
+              ],
+              "cleanup_done": [
+                {
+                  "elapsed_ms": 33606,
+                  "duration_ms": 712
+                }
+              ]
+            },
+            "cleanup_confirmed": true
+          },
+          {
+            "sample": 2,
+            "legs_seconds": [
+              20.569,
+              6.504
+            ],
+            "calls_per_leg": [
+              1,
+              0
+            ],
+            "executions": 1,
+            "client_seconds": 0.0,
+            "idempotent_replays": 1,
+            "argument_checks_ok": true,
+            "answer_ok": true,
+            "semantic_answer_ok": true,
+            "format_only_difference": false,
+            "total_seconds": 27.097,
+            "task_id": "f955cf6a56c16c0b8bbc86b75460b189",
+            "done": true,
+            "generation_posts": 1,
+            "denied_tools": 0,
+            "forwarded_tools": 1,
+            "error_code": null,
+            "upstream_effort": "7",
+            "upstream_catalog_entries": 32,
+            "request_catalog_exact": true,
+            "full_catalog_retained": true,
+            "native_call_names": [
+              "connector.call"
+            ],
+            "native_call_ids_unique": true,
+            "native_results_uploaded": 1,
+            "native_result_ids_match": true,
+            "native_direct_error_flags": [
+              null
+            ],
+            "native_direct_content_dto": false,
+            "native_path_proven": false,
+            "native_original_inputs_preserved": true,
+            "timing_stages": {
+              "task_start": [
+                {
+                  "elapsed_ms": 5,
+                  "duration_ms": 5
+                }
+              ],
+              "connector_ready": [
+                {
+                  "elapsed_ms": 709,
+                  "duration_ms": 701
+                }
+              ],
+              "upstream_ack_received": [
+                {
+                  "elapsed_ms": 1695,
+                  "duration_ms": 969
+                }
+              ],
+              "upstream_timeout_control": [
+                {
+                  "elapsed_ms": 1806,
+                  "duration_ms": 1081
+                }
+              ],
+              "upstream_first_chunk": [
+                {
+                  "elapsed_ms": 2510,
+                  "duration_ms": 1784
+                }
+              ],
+              "native_result_uploaded": [
+                {
+                  "elapsed_ms": 2834,
+                  "duration_ms": 258
+                },
+                {
+                  "elapsed_ms": 3890,
+                  "duration_ms": 273
+                },
+                {
+                  "elapsed_ms": 20912,
+                  "duration_ms": 303
+                }
+              ],
+              "tool_call_ready": [
+                {
+                  "elapsed_ms": 20554,
+                  "duration_ms": 20554
+                }
+              ],
+              "client_result_received": [
+                {
+                  "elapsed_ms": 20606,
+                  "duration_ms": 51
+                }
+              ],
+              "upstream_stream_finished": [
+                {
+                  "elapsed_ms": 26416,
+                  "duration_ms": 25690
+                }
+              ],
+              "final_readback_done": [
+                {
+                  "elapsed_ms": 27058,
+                  "duration_ms": 642
+                }
+              ],
+              "upstream_complete": [
+                {
+                  "elapsed_ms": 27069,
+                  "duration_ms": 27069
+                }
+              ],
+              "final_ready": [
+                {
+                  "elapsed_ms": 27075,
+                  "duration_ms": 6477
+                }
+              ],
+              "cleanup_start": [
+                {
+                  "elapsed_ms": 27075,
+                  "duration_ms": 0
+                }
+              ],
+              "cleanup_done": [
+                {
+                  "elapsed_ms": 27810,
+                  "duration_ms": 734
+                }
+              ]
+            },
+            "cleanup_confirmed": true
+          }
+        ]
+      }
+    },
+    {
+      "file": "baseline-bash_success.json",
+      "report": {
+        "phase": "baseline",
+        "case": "bash_success",
+        "model": "doubao-orange-5.5",
+        "effort": 7,
+        "tools": 32,
+        "parallel_tool_calls": false,
+        "real_external_execution": true,
+        "samples": [
+          {
+            "sample": 1,
+            "legs_seconds": [
+              31.095,
+              6.702
+            ],
+            "calls_per_leg": [
+              1,
+              0
+            ],
+            "executions": 1,
+            "client_seconds": 0.086,
+            "idempotent_replays": 1,
+            "argument_checks_ok": true,
+            "actual_exit_code": 0,
+            "answer_ok": true,
+            "semantic_answer_ok": true,
+            "format_only_difference": false,
+            "total_seconds": 37.913,
+            "task_id": "b4163004cd0e196f8bcbf78804e4c3c9",
+            "done": true,
+            "generation_posts": 1,
+            "denied_tools": 0,
+            "forwarded_tools": 1,
+            "error_code": null,
+            "upstream_effort": "7",
+            "upstream_catalog_entries": 32,
+            "request_catalog_exact": true,
+            "full_catalog_retained": true,
+            "native_call_names": [
+              "connector.call"
+            ],
+            "native_call_ids_unique": true,
+            "native_results_uploaded": 1,
+            "native_result_ids_match": true,
+            "native_direct_error_flags": [
+              null
+            ],
+            "native_direct_content_dto": false,
+            "native_path_proven": false,
+            "native_original_inputs_preserved": true,
+            "timing_stages": {
+              "task_start": [
+                {
+                  "elapsed_ms": 6,
+                  "duration_ms": 6
+                }
+              ],
+              "connector_ready": [
+                {
+                  "elapsed_ms": 717,
+                  "duration_ms": 708
+                }
+              ],
+              "upstream_ack_received": [
+                {
+                  "elapsed_ms": 2056,
+                  "duration_ms": 1323
+                }
+              ],
+              "upstream_timeout_control": [
+                {
+                  "elapsed_ms": 2129,
+                  "duration_ms": 1396
+                }
+              ],
+              "upstream_first_chunk": [
+                {
+                  "elapsed_ms": 2864,
+                  "duration_ms": 2132
+                }
+              ],
+              "native_result_uploaded": [
+                {
+                  "elapsed_ms": 3205,
+                  "duration_ms": 273
+                },
+                {
+                  "elapsed_ms": 4247,
+                  "duration_ms": 269
+                },
+                {
+                  "elapsed_ms": 31492,
+                  "duration_ms": 283
+                },
+                {
+                  "elapsed_ms": 32550,
+                  "duration_ms": 258
+                },
+                {
+                  "elapsed_ms": 33181,
+                  "duration_ms": 257
+                }
+              ],
+              "tool_call_ready": [
+                {
+                  "elapsed_ms": 31052,
+                  "duration_ms": 31052
+                }
+              ],
+              "client_result_received": [
+                {
+                  "elapsed_ms": 31203,
+                  "duration_ms": 150
+                }
+              ],
+              "upstream_stream_finished": [
+                {
+                  "elapsed_ms": 37160,
+                  "duration_ms": 36428
+                }
+              ],
+              "final_readback_done": [
+                {
+                  "elapsed_ms": 37809,
+                  "duration_ms": 649
+                }
+              ],
+              "upstream_complete": [
+                {
+                  "elapsed_ms": 37837,
+                  "duration_ms": 37837
+                }
+              ],
+              "final_ready": [
+                {
+                  "elapsed_ms": 37859,
+                  "duration_ms": 6669
+                }
+              ],
+              "cleanup_start": [
+                {
+                  "elapsed_ms": 37860,
+                  "duration_ms": 0
+                }
+              ],
+              "cleanup_done": [
+                {
+                  "elapsed_ms": 38691,
+                  "duration_ms": 831
+                }
+              ]
+            },
+            "cleanup_confirmed": true
+          },
+          {
+            "sample": 2,
+            "legs_seconds": [
+              21.824,
+              10.885
+            ],
+            "calls_per_leg": [
+              1,
+              0
+            ],
+            "executions": 1,
+            "client_seconds": 0.048,
+            "idempotent_replays": 1,
+            "argument_checks_ok": true,
+            "actual_exit_code": 0,
+            "answer_ok": true,
+            "semantic_answer_ok": true,
+            "format_only_difference": false,
+            "total_seconds": 32.769,
+            "task_id": "081149e7627fe07546510690f1386d68",
+            "done": true,
+            "generation_posts": 1,
+            "denied_tools": 0,
+            "forwarded_tools": 1,
+            "error_code": null,
+            "upstream_effort": "7",
+            "upstream_catalog_entries": 32,
+            "request_catalog_exact": true,
+            "full_catalog_retained": true,
+            "native_call_names": [
+              "connector.call"
+            ],
+            "native_call_ids_unique": true,
+            "native_results_uploaded": 1,
+            "native_result_ids_match": true,
+            "native_direct_error_flags": [
+              null
+            ],
+            "native_direct_content_dto": false,
+            "native_path_proven": false,
+            "native_original_inputs_preserved": true,
+            "timing_stages": {
+              "task_start": [
+                {
+                  "elapsed_ms": 15,
+                  "duration_ms": 15
+                }
+              ],
+              "connector_ready": [
+                {
+                  "elapsed_ms": 747,
+                  "duration_ms": 730
+                }
+              ],
+              "upstream_ack_received": [
+                {
+                  "elapsed_ms": 1947,
+                  "duration_ms": 1181
+                }
+              ],
+              "upstream_timeout_control": [
+                {
+                  "elapsed_ms": 2033,
+                  "duration_ms": 1267
+                }
+              ],
+              "upstream_first_chunk": [
+                {
+                  "elapsed_ms": 2894,
+                  "duration_ms": 2127
+                }
+              ],
+              "native_result_uploaded": [
+                {
+                  "elapsed_ms": 3284,
+                  "duration_ms": 270
+                },
+                {
+                  "elapsed_ms": 4300,
+                  "duration_ms": 250
+                },
+                {
+                  "elapsed_ms": 22159,
+                  "duration_ms": 272
+                },
+                {
+                  "elapsed_ms": 31482,
+                  "duration_ms": 269
+                },
+                {
+                  "elapsed_ms": 32519,
+                  "duration_ms": 267
+                }
+              ],
+              "tool_call_ready": [
+                {
+                  "elapsed_ms": 21803,
+                  "duration_ms": 21803
+                }
+              ],
+              "client_result_received": [
+                {
+                  "elapsed_ms": 21882,
+                  "duration_ms": 79
+                }
+              ],
+              "upstream_stream_finished": [
+                {
+                  "elapsed_ms": 32063,
+                  "duration_ms": 31297
+                }
+              ],
+              "final_readback_done": [
+                {
+                  "elapsed_ms": 32723,
+                  "duration_ms": 660
+                }
+              ],
+              "upstream_complete": [
+                {
+                  "elapsed_ms": 32732,
+                  "duration_ms": 32732
+                }
+              ],
+              "final_ready": [
+                {
+                  "elapsed_ms": 32742,
+                  "duration_ms": 10866
+                }
+              ],
+              "cleanup_start": [
+                {
+                  "elapsed_ms": 32742,
+                  "duration_ms": 0
+                }
+              ],
+              "cleanup_done": [
+                {
+                  "elapsed_ms": 33488,
+                  "duration_ms": 746
+                }
+              ]
+            },
+            "cleanup_confirmed": true
+          }
+        ]
+      }
+    },
+    {
+      "file": "baseline-bash_error.json",
+      "report": {
+        "phase": "baseline",
+        "case": "bash_error",
+        "model": "doubao-orange-5.5",
+        "effort": 7,
+        "tools": 32,
+        "parallel_tool_calls": false,
+        "real_external_execution": true,
+        "samples": [
+          {
+            "sample": 1,
+            "legs_seconds": [
+              23.73,
+              7.629
+            ],
+            "calls_per_leg": [
+              1,
+              0
+            ],
+            "executions": 1,
+            "client_seconds": 0.053,
+            "idempotent_replays": 1,
+            "argument_checks_ok": true,
+            "actual_exit_code": 7,
+            "answer_ok": true,
+            "semantic_answer_ok": true,
+            "format_only_difference": false,
+            "total_seconds": 31.434,
+            "task_id": "97f46bc5357462eab91e016bd492c1cc",
+            "done": true,
+            "generation_posts": 1,
+            "denied_tools": 0,
+            "forwarded_tools": 1,
+            "error_code": null,
+            "upstream_effort": "7",
+            "upstream_catalog_entries": 32,
+            "request_catalog_exact": true,
+            "full_catalog_retained": true,
+            "native_call_names": [
+              "connector.call"
+            ],
+            "native_call_ids_unique": true,
+            "native_results_uploaded": 1,
+            "native_result_ids_match": true,
+            "native_direct_error_flags": [
+              null
+            ],
+            "native_direct_content_dto": false,
+            "native_path_proven": false,
+            "native_original_inputs_preserved": true,
+            "timing_stages": {
+              "task_start": [
+                {
+                  "elapsed_ms": 5,
+                  "duration_ms": 5
+                }
+              ],
+              "connector_ready": [
+                {
+                  "elapsed_ms": 714,
+                  "duration_ms": 707
+                }
+              ],
+              "upstream_ack_received": [
+                {
+                  "elapsed_ms": 1780,
+                  "duration_ms": 1045
+                }
+              ],
+              "upstream_timeout_control": [
+                {
+                  "elapsed_ms": 1984,
+                  "duration_ms": 1249
+                }
+              ],
+              "upstream_first_chunk": [
+                {
+                  "elapsed_ms": 2712,
+                  "duration_ms": 1978
+                }
+              ],
+              "native_result_uploaded": [
+                {
+                  "elapsed_ms": 3038,
+                  "duration_ms": 263
+                },
+                {
+                  "elapsed_ms": 4078,
+                  "duration_ms": 277
+                },
+                {
+                  "elapsed_ms": 24059,
+                  "duration_ms": 276
+                }
+              ],
+              "tool_call_ready": [
+                {
+                  "elapsed_ms": 23684,
+                  "duration_ms": 23684
+                }
+              ],
+              "client_result_received": [
+                {
+                  "elapsed_ms": 23779,
+                  "duration_ms": 94
+                }
+              ],
+              "upstream_stream_finished": [
+                {
+                  "elapsed_ms": 30619,
+                  "duration_ms": 29884
+                }
+              ],
+              "final_readback_done": [
+                {
+                  "elapsed_ms": 31336,
+                  "duration_ms": 717
+                }
+              ],
+              "upstream_complete": [
+                {
+                  "elapsed_ms": 31358,
+                  "duration_ms": 31358
+                }
+              ],
+              "final_ready": [
+                {
+                  "elapsed_ms": 31383,
+                  "duration_ms": 7612
+                }
+              ],
+              "cleanup_start": [
+                {
+                  "elapsed_ms": 31384,
+                  "duration_ms": 0
+                }
+              ],
+              "cleanup_done": [
+                {
+                  "elapsed_ms": 32121,
+                  "duration_ms": 737
+                }
+              ]
+            },
+            "cleanup_confirmed": true
+          }
+        ]
+      }
+    },
+    {
+      "file": "baseline-dependency.json",
+      "report": {
+        "phase": "baseline",
+        "case": "dependency",
+        "model": "doubao-orange-5.5",
+        "effort": 7,
+        "tools": 32,
+        "parallel_tool_calls": false,
+        "real_external_execution": true,
+        "samples": [
+          {
+            "sample": 1,
+            "legs_seconds": [
+              18.58,
+              19.082,
+              8.133
+            ],
+            "calls_per_leg": [
+              1,
+              1,
+              0
+            ],
+            "executions": 2,
+            "client_seconds": 0.041,
+            "idempotent_replays": 2,
+            "argument_checks_ok": true,
+            "actual_exit_code": 0,
+            "answer_ok": true,
+            "semantic_answer_ok": true,
+            "format_only_difference": false,
+            "total_seconds": 45.866,
+            "task_id": "38800bf85a8cee553d127e33fd516aa9",
+            "done": true,
+            "generation_posts": 1,
+            "denied_tools": 0,
+            "forwarded_tools": 2,
+            "error_code": null,
+            "upstream_effort": "7",
+            "upstream_catalog_entries": 32,
+            "request_catalog_exact": true,
+            "full_catalog_retained": true,
+            "native_call_names": [
+              "connector.call",
+              "connector.call"
+            ],
+            "native_call_ids_unique": true,
+            "native_results_uploaded": 2,
+            "native_result_ids_match": true,
+            "native_direct_error_flags": [
+              null,
+              null
+            ],
+            "native_direct_content_dto": false,
+            "native_path_proven": false,
+            "native_original_inputs_preserved": true,
+            "timing_stages": {
+              "task_start": [
+                {
+                  "elapsed_ms": 5,
+                  "duration_ms": 5
+                }
+              ],
+              "connector_ready": [
+                {
+                  "elapsed_ms": 800,
+                  "duration_ms": 793
+                }
+              ],
+              "upstream_ack_received": [
+                {
+                  "elapsed_ms": 1974,
+                  "duration_ms": 1157
+                }
+              ],
+              "upstream_timeout_control": [
+                {
+                  "elapsed_ms": 2186,
+                  "duration_ms": 1369
+                }
+              ],
+              "upstream_first_chunk": [
+                {
+                  "elapsed_ms": 2797,
+                  "duration_ms": 1980
+                }
+              ],
+              "native_result_uploaded": [
+                {
+                  "elapsed_ms": 3154,
+                  "duration_ms": 255
+                },
+                {
+                  "elapsed_ms": 4192,
+                  "duration_ms": 251
+                },
+                {
+                  "elapsed_ms": 18848,
+                  "duration_ms": 268
+                },
+                {
+                  "elapsed_ms": 32245,
+                  "duration_ms": 262
+                },
+                {
+                  "elapsed_ms": 37985,
+                  "duration_ms": 281
+                }
+              ],
+              "tool_call_ready": [
+                {
+                  "elapsed_ms": 18529,
+                  "duration_ms": 18529
+                },
+                {
+                  "elapsed_ms": 37628,
+                  "duration_ms": 19060
+                }
+              ],
+              "client_result_received": [
+                {
+                  "elapsed_ms": 18576,
+                  "duration_ms": 46
+                },
+                {
+                  "elapsed_ms": 37701,
+                  "duration_ms": 72
+                }
+              ],
+              "upstream_stream_finished": [
+                {
+                  "elapsed_ms": 45111,
+                  "duration_ms": 44294
+                }
+              ],
+              "final_readback_done": [
+                {
+                  "elapsed_ms": 45787,
+                  "duration_ms": 675
+                }
+              ],
+              "upstream_complete": [
+                {
+                  "elapsed_ms": 45793,
+                  "duration_ms": 45793
+                }
+              ],
+              "final_ready": [
+                {
+                  "elapsed_ms": 45807,
+                  "duration_ms": 8115
+                }
+              ],
+              "cleanup_start": [
+                {
+                  "elapsed_ms": 45807,
+                  "duration_ms": 0
+                }
+              ],
+              "cleanup_done": [
+                {
+                  "elapsed_ms": 46611,
+                  "duration_ms": 803
+                }
+              ]
+            },
+            "cleanup_confirmed": true
+          }
+        ]
+      }
+    }
+  ]
+}

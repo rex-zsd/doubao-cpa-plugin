@@ -45,6 +45,7 @@ type apiMessage struct {
 	Name       string        `json:"name,omitempty"`
 	ToolCallID string        `json:"tool_call_id,omitempty"`
 	ToolCalls  []apiToolCall `json:"tool_calls,omitempty"`
+	IsError    bool          `json:"is_error,omitempty"`
 }
 type apiRequest struct {
 	Model         string       `json:"model"`
@@ -337,6 +338,9 @@ func parseAPIRequest(input io.Reader) (apiRequest, *apiError) {
 		if m.Role == "tool" && m.ToolCallID == "" {
 			return req, apiFail(400, "missing_tool_call_id", "Tool messages require tool_call_id")
 		}
+		if m.IsError && m.Role != "tool" {
+			return req, apiFail(400, "invalid_tool_result", "is_error is only valid on tool results")
+		}
 		if len(m.ToolCalls) > 0 && m.Role != "assistant" {
 			return req, apiFail(400, "invalid_tool_calls", "Only assistant messages may contain tool_calls")
 		}
@@ -368,6 +372,7 @@ type apiExchange struct {
 	id      string
 	model   string
 	created int64
+	started time.Time
 	// prompt is the estimated prompt size reported as usage; Work reports none.
 	prompt  int
 	ready   chan struct{}
@@ -378,7 +383,8 @@ type apiExchange struct {
 }
 
 func newExchange(model string) *apiExchange {
-	return &apiExchange{id: "chatcmpl_" + token(), model: model, created: time.Now().Unix(), ready: make(chan struct{}), changed: make(chan struct{})}
+	now := time.Now()
+	return &apiExchange{id: "chatcmpl_" + token(), model: model, created: now.Unix(), started: now, ready: make(chan struct{}), changed: make(chan struct{})}
 }
 func (x *apiExchange) resolve(message apiMessage, finish string, err *apiError) {
 	x.once.Do(func() {
@@ -393,8 +399,9 @@ func (x *apiExchange) resolve(message apiMessage, finish string, err *apiError) 
 }
 
 type clientToolPending struct {
-	nativeID string
-	exposed  *apiExchange
+	nativeID  string
+	exposed   *apiExchange
+	exposedAt time.Time
 
 	turn       *gatewayTurn
 	call       apiToolCall
@@ -403,19 +410,26 @@ type clientToolPending struct {
 	result     chan string
 	submitted  bool
 	value      string
+	isError    bool
 	next       *apiExchange
 }
 type gatewayTurn struct {
+	// Saved per task: changing configuration must not reinterpret a waiting
+	// native call or convert a recovered MCP conversation into a native one.
+	nativeTools             bool
 	initialKey, initialHash string
 	first                   *apiExchange
 	finalText               string
 
-	id                                         string
+	id string
+	// started measures this process's handling time; recovery starts a new span.
+	started                                    time.Time
 	request                                    apiRequest
 	current                                    *apiExchange
 	ctx                                        context.Context
 	cancel                                     context.CancelFunc
 	statePath, receiptPath, connector, sandbox string
+	connectorLease, connectorLabel             string
 	done                                       bool
 	finished                                   time.Time
 	deadline                                   time.Time
@@ -445,6 +459,7 @@ const threadTTL, threadLimit = 12 * time.Hour, 128
 // that extends exactly the history it answered continues it instead of
 // opening a new conversation with the full transcript.
 type gatewayThread struct {
+	nativeTools                            bool
 	conversation, mode, workspace, sandbox string
 	used                                   time.Time
 	// header and keys are the thread's threadHeader and history prefix keys,
@@ -458,8 +473,11 @@ type gatewayIdempotency struct {
 	exchange *apiExchange
 }
 type gateway struct {
+	// Opt-in for new tasks; pending tasks restore their saved routing policy.
+	nativeTools bool
 	suspending  bool
 	helperPath  string
+	connectors  *connectorPool
 	c           *Client
 	models      []Model
 	dir         string
@@ -489,14 +507,14 @@ func (g *gateway) checkpointLocked(t *gatewayTurn) error {
 	pending := []any{}
 	for id, p := range g.calls {
 		if p.turn == t {
-			pending = append(pending, object{"id": id, "call": p.call, "native_id": p.nativeID, "exchange": exchangeRecord(p.exposed), "next_exchange": exchangeRecord(p.next), "batch_calls": p.batchCalls, "expected_messages": p.expected, "submitted": p.submitted, "result": p.value})
+			pending = append(pending, object{"id": id, "call": p.call, "native_id": p.nativeID, "exchange": exchangeRecord(p.exposed), "next_exchange": exchangeRecord(p.next), "batch_calls": p.batchCalls, "expected_messages": p.expected, "submitted": p.submitted, "result": p.value, "result_is_error": p.isError})
 		}
 	}
-	return saveJSON(t.statePath, object{"version": 2, "finished_at": t.finished.Unix(), "deadline": t.deadline.Unix(), "error_status": errorStatus(t.err), "id": t.id, "initial_key": t.initialKey, "initial_hash": t.initialHash, "first_exchange": exchangeRecord(t.first), "current_exchange": exchangeRecord(t.current), "final_text": t.finalText, "request": t.request, "connector_id": t.connector, "sandbox_id": t.sandbox, "receipt_path": t.receiptPath, "generation_posts": t.generationPosts, "forwarded_tools": t.forwarded, "denied_tools": t.denied, "done": t.done, "cleanup_requested": t.cleanupRequested, "cleanup_confirmed": t.cleanupConfirmed, "pending": pending, "error": t.err, "conversation_id": t.conversation, "mode": t.mode, "workspace": t.workspace, "continued": t.continued})
+	return saveJSON(t.statePath, object{"version": 2, "native_tools": t.nativeTools, "finished_at": t.finished.Unix(), "deadline": t.deadline.Unix(), "error_status": errorStatus(t.err), "id": t.id, "initial_key": t.initialKey, "initial_hash": t.initialHash, "first_exchange": exchangeRecord(t.first), "current_exchange": exchangeRecord(t.current), "final_text": t.finalText, "request": t.request, "connector_id": t.connector, "connector_lease": t.connectorLease, "connector_label": t.connectorLabel, "sandbox_id": t.sandbox, "receipt_path": t.receiptPath, "generation_posts": t.generationPosts, "forwarded_tools": t.forwarded, "denied_tools": t.denied, "done": t.done, "cleanup_requested": t.cleanupRequested, "cleanup_confirmed": t.cleanupConfirmed, "pending": pending, "error": t.err, "conversation_id": t.conversation, "mode": t.mode, "workspace": t.workspace, "continued": t.continued})
 }
 func (g *gateway) sweepLocked() {
 	for _, t := range g.turns {
-		if t.done && (t.connector == "" || t.cleanupConfirmed) && time.Since(t.finished) > 30*time.Minute {
+		if t.done && (t.connector == "" && t.connectorLease == "" || t.cleanupConfirmed) && time.Since(t.finished) > 30*time.Minute {
 			g.dropTurnLocked(t)
 		}
 	}
@@ -618,7 +636,11 @@ func threadMessage(m apiMessage) string {
 	for _, call := range m.ToolCalls {
 		calls = append(calls, []string{call.ID, call.Function.Name, call.Function.Arguments})
 	}
-	return jsonText(object{"role": m.Role, "content": content, "tool_call_id": m.ToolCallID, "tool_calls": calls})
+	value := object{"role": m.Role, "content": content, "tool_call_id": m.ToolCallID, "tool_calls": calls}
+	if m.IsError {
+		value["is_error"] = true
+	}
+	return jsonText(value)
 }
 
 // claimThreadLocked takes the conversation that answered the longest prefix
@@ -633,7 +655,7 @@ func (g *gateway) claimThreadLocked(req apiRequest) (string, *gatewayThread, int
 		}
 		key := threadKey(header, keys[i])
 		th := g.threads[key]
-		if th == nil {
+		if th == nil || th.mode == "tools" && th.nativeTools != g.nativeTools {
 			continue
 		}
 		delete(g.threads, key)
@@ -687,17 +709,18 @@ func (g *gateway) logThreadMissLocked(req apiRequest, header string, keys []stri
 }
 
 // rememberLocked records the conversation behind a successful answer under
-// the history it completes. A tool task's conversation is kept only after its
-// connector was removed.
+// the history it completes. Native runners join the tool stream and handler
+// before finish, so its sandbox can be reused while the old connector is
+// being removed. The next task registers and permits only its own connector.
 func (g *gateway) rememberLocked(t *gatewayTurn, text string) {
-	if t.conversation == "" || t.mode == "" || t.connector != "" && !t.cleanupConfirmed {
+	if t.conversation == "" || t.mode == "" {
 		return
 	}
 	messages := append(append([]apiMessage{}, t.request.Messages...), apiMessage{Role: "assistant", Content: text})
 	header, keys := threadHeader(t.request), threadKeys(messages)
 	key := threadKey(header, keys[len(keys)-1])
 	g.forgetLocked(key)
-	g.threads[key] = &gatewayThread{conversation: t.conversation, mode: t.mode, workspace: t.workspace, sandbox: t.sandbox, used: time.Now(), header: header, keys: keys}
+	g.threads[key] = &gatewayThread{conversation: t.conversation, mode: t.mode, workspace: t.workspace, sandbox: t.sandbox, used: time.Now(), header: header, keys: keys, nativeTools: t.nativeTools}
 	for len(g.threads) > threadLimit {
 		oldest := ""
 		for k, th := range g.threads {
@@ -778,8 +801,9 @@ func (g *gateway) continueLocked(req apiRequest, key string, head, results, afte
 	if failure != nil {
 		return nil, failure
 	}
+	isError := len(p.batchCalls) == 0 && results[0].IsError
 	if p.submitted {
-		if value != p.value || failedLocked(t, p.next) {
+		if value != p.value || isError != p.isError || failedLocked(t, p.next) {
 			return restart()
 		}
 		return p.next, nil
@@ -799,16 +823,17 @@ func (g *gateway) continueLocked(req apiRequest, key string, head, results, afte
 	x := newExchange(req.Model)
 	x.prompt = estimateTokens(promptText(req))
 	previousExchange, previousRequest := t.current, t.request
-	p.submitted, p.value, p.next = true, value, x
+	p.submitted, p.value, p.next, p.isError = true, value, x, isError
 	t.current = x
 	req.Tools, req.ToolChoice, req.Parallel = t.request.Tools, t.request.ToolChoice, t.request.Parallel
 	req.Effort, req.ResponseFormat = t.request.Effort, t.request.ResponseFormat
 	t.request = req
 	if err := g.checkpointLocked(t); err != nil {
-		p.submitted, p.value, p.next = false, "", nil
+		p.submitted, p.value, p.next, p.isError = false, "", nil, false
 		t.current, t.request = previousExchange, previousRequest
 		return nil, apiFail(500, "state_persistence_failed", "Could not persist tool continuation; nothing was uploaded")
 	}
+	timing(t, "client_result_received", p.exposedAt)
 	p.result <- value
 	return x, nil
 }
@@ -833,7 +858,7 @@ func continuationValue(p *clientToolPending, results []apiMessage, extra string)
 	if len(results) != len(p.batchCalls) {
 		return "", apiFail(400, "incomplete_tool_batch", "Supply one tool result for every call in this batch in one request")
 	}
-	wanted, values := map[string]bool{}, map[string]string{}
+	wanted, values, failures := map[string]bool{}, map[string]string{}, map[string]bool{}
 	for _, call := range p.batchCalls {
 		wanted[call.ID] = true
 	}
@@ -842,10 +867,15 @@ func continuationValue(p *clientToolPending, results []apiMessage, extra string)
 			return "", apiFail(409, "invalid_tool_batch", "Batch contains unknown, duplicate or non-tool results")
 		}
 		values[message.ToolCallID] = apiResultText(message.Content)
+		failures[message.ToolCallID] = message.IsError
 	}
 	rows := []any{}
 	for i, call := range p.batchCalls {
-		rows = append(rows, object{"index": i, "name": call.Function.Name, "result": values[call.ID]})
+		row := object{"index": i, "name": call.Function.Name, "result": values[call.ID]}
+		if failures[call.ID] {
+			row["isError"] = true
+		}
+		rows = append(rows, row)
 	}
 	value := object{"results": rows}
 	if extra != "" {
@@ -954,20 +984,32 @@ func (g *gateway) startLocked(req apiRequest, key string, transcript bool) (*api
 			delete(g.idempotency, implicit)
 		}
 	}
-	prompt := promptText(req)
+	threadKey, thread, continued := g.claimThreadLocked(req)
+	restoreThread := func() {
+		if thread != nil {
+			g.threads[threadKey] = thread
+		}
+	}
+	prompt := outgoingPrompt(req, continued)
 	if utf16Len(prompt) > maxPromptChars {
+		restoreThread()
 		return nil, promptTooLong(prompt)
 	}
+	// Keep its workspace pinned while capacity reclamation may drop the old
+	// completed task that originally owned this conversation.
+	restoreThread()
 	if failure := g.reserveLocked(); failure != nil {
 		return nil, failure
 	}
-	threadKey, thread, continued := g.claimThreadLocked(req)
+	if thread != nil {
+		delete(g.threads, threadKey)
+	}
 	deadline := time.Now().Add(g.taskTimeout)
 	ctx, cancel := context.WithCancel(g.ctx)
 	x := newExchange(req.Model)
-	x.prompt = estimateTokens(prompt)
+	x.prompt = estimateTokens(promptText(req))
 	id := token()
-	t := &gatewayTurn{id: id, deadline: deadline, initialHash: fingerprint, first: x, request: req, current: x, ctx: ctx, cancel: cancel, statePath: filepath.Join(g.dir, "gateway-state-"+id+".json"), receiptPath: filepath.Join(g.dir, "gateway-receipt-"+id+".json")}
+	t := &gatewayTurn{nativeTools: g.nativeTools, id: id, started: x.started, deadline: deadline, initialHash: fingerprint, first: x, request: req, current: x, ctx: ctx, cancel: cancel, statePath: filepath.Join(g.dir, "gateway-state-"+id+".json"), receiptPath: filepath.Join(g.dir, "gateway-receipt-"+id+".json")}
 	if key != "" {
 		t.initialKey = apiHash(key)
 	}
@@ -976,9 +1018,7 @@ func (g *gateway) startLocked(req apiRequest, key string, transcript bool) (*api
 	}
 	if err := g.checkpointLocked(t); err != nil {
 		cancel()
-		if thread != nil {
-			g.threads[threadKey] = thread
-		}
+		restoreThread()
 		return nil, apiFail(500, "state_persistence_failed", "Could not persist request; generation was not submitted")
 	}
 	if thread != nil {
@@ -993,6 +1033,7 @@ func (g *gateway) startLocked(req apiRequest, key string, transcript bool) (*api
 		g.idempotency[implicit] = gatewayIdempotency{hash: fingerprint, turn: t, exchange: x}
 	}
 	g.wg.Add(1)
+	timing(t, "task_start", t.started)
 	go func() { defer g.wg.Done(); g.run(t) }()
 	return x, nil
 }
@@ -1008,7 +1049,7 @@ func (g *gateway) reserveLocked() *apiError {
 	for len(g.turns) >= 128 {
 		var oldest *gatewayTurn
 		for _, t := range g.turns {
-			if t.done && (t.connector == "" || t.cleanupConfirmed) && (oldest == nil || t.finished.Before(oldest.finished)) {
+			if t.done && (t.connector == "" && t.connectorLease == "" || t.cleanupConfirmed) && (oldest == nil || t.finished.Before(oldest.finished)) {
 				oldest = t
 			}
 		}
@@ -1051,8 +1092,15 @@ func (g *gateway) waitingLocked(t *gatewayTurn) bool {
 // promptText renders the prompt a task sends, with placeholders for media and
 // the connector name, so Work's size limit is checked before any upload.
 func promptText(req apiRequest) string {
+	return outgoingPrompt(req, 0)
+}
+
+// Only the delta is sent when a live native conversation owns the prefix.
+// This preflight uses the same media numbering and continued rendering as the
+// real request. Full-history fallback is checked separately before any upload.
+func outgoingPrompt(req apiRequest, continued int) string {
 	clone := req
-	clone.Messages = append([]apiMessage{}, req.Messages...)
+	clone.Messages = append([]apiMessage{}, req.Messages[continued:]...)
 	attachments := 0
 	for i, m := range clone.Messages {
 		parts, ok := m.Content.([]any)
@@ -1074,7 +1122,7 @@ func promptText(req apiRequest) string {
 	if usesTools(req) {
 		connector = connectorName(strings.Repeat("0", 32))
 	}
-	return renderAPIPrompt(clone, connector, false)
+	return renderAPIPrompt(clone, connector, continued > 0)
 }
 
 // utf16Len counts UTF-16 code units, the unit of Work's message limit.
@@ -1132,6 +1180,11 @@ func (g *gateway) finish(t *gatewayTurn, text string, failure *apiError) {
 	}
 	g.mu.Unlock()
 	t.cancel()
+	stage := "final_ready"
+	if failure != nil {
+		stage = "final_error"
+	}
+	timing(t, stage, x.started)
 	x.resolve(apiMessage{Role: "assistant", Content: text}, "stop", failure)
 }
 
@@ -1309,7 +1362,7 @@ func (g *gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	writeAPIExchange(w, r, x, req.Stream, truthy(req.StreamOptions["include_usage"]))
 }
 
-func serveGateway(c *Client, dir, address string, timeout time.Duration) error {
+func serveGateway(c *Client, dir, address string, timeout time.Duration, nativeTools bool) error {
 	host, _, err := net.SplitHostPort(address)
 	if err != nil || net.ParseIP(host) == nil || !net.ParseIP(host).IsLoopback() {
 		return errors.New("gateway listen address must be an explicit loopback IP and port")
@@ -1329,6 +1382,7 @@ func serveGateway(c *Client, dir, address string, timeout time.Duration) error {
 		return err
 	}
 	g := newGateway(ctx, c, publicModels(models), dir, timeout)
+	g.nativeTools = nativeTools
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
