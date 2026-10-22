@@ -6,7 +6,7 @@
 
 豆包 Work 实际运行的是 agent，插件把它的对话和真实连接器调用转换成 LLM API。系统消息优先级、温度、token 预算等底层模型语义无法因此获得，见下文的参数表。
 
-当前版本为 0.3.20，已在官方 CPA v8.0.13 上实测，见[连接器隔离与原生编辑验收](docs/NATIVE_EXPANSION_CN.md)。
+当前版本为 0.3.21，已在官方 CPA v8.0.13 上实测，见[连接器隔离与原生编辑验收](docs/NATIVE_EXPANSION_CN.md)。
 
 支持 CPA 的 OAuth 模型别名，可让现有 Claude 客户端用兼容模型名调用豆包 Work，配置和执行语义见 [模型别名说明](docs/MODEL_ALIASES_CN.md)。
 
@@ -25,7 +25,7 @@ cd doubao-cpa-plugin
 把这两个文件放进 CPA 的插件目录。`.so` 的文件名要带版本号：CPA 按 `<id>-v<版本>.so` 识别插件，同一插件有多个版本时加载最高的那个。
 
 ```text
-plugins/linux/amd64/doubao-work-v0.3.20.so
+plugins/linux/amd64/doubao-work-v0.3.21.so
 plugins/doubao-work/bin/doubao-helper
 ```
 
@@ -100,11 +100,13 @@ Codex 的 Responses Lite 请求可以直接使用，包括 `additional_tools`、
 
 客户端函数通过真实 MCP 连接器提供给 Work。插件收到标准的 `tool_calls` / `function_call` 后交给客户端执行。客户端需要把原始 assistant 调用和 tool 结果一起回传，插件再把结果交回**原来的 Work 任务**。本地 shell、读写文件等未声明的工具不会被执行。
 
-可设置 `native_tools: true`，让兼容的单次调用或依赖链直接走 Work 原生工具通道，减少 `tool_search` 和 MCP 包装。0.3.20 转发客户端明确声明的同名 `Read`（绝对路径、已知代码/文本类型，包括 `.txt/.go/.py/.js/.ts/.md/.json` 等，可选 offset/limit，offset 从 1 开始）、文本 `Write/Edit` 和前台 `Bash`（命令和毫秒 timeout 原样保留）。Write 保留 file_path/content；Edit 保留 file_path、非空 old_string、new_string 和可选 replace_all。执行和审批仍在 HTTP 客户端环境，由客户端返回真实结果；插件和 Work 不代替客户端执行。调用须通过客户端原始 JSON Schema 校验；只移除 Work 的文本缩略图默认值和默认沙箱选择字段，保留原始 native ID/input 供回传。PDF、媒体、未知 Read 文件类型、后台运行、提权和其他不兼容参数继续使用 MCP。
+可设置 `native_tools: true`，让兼容的单次调用或依赖链直接走 Work 原生工具通道，减少 `tool_search` 和 MCP 包装。0.3.21 转发客户端明确声明的同名 `Read`（绝对路径、已知代码/文本类型，包括 `.txt/.go/.py/.js/.ts/.md/.json` 等，可选 offset/limit，offset 从 1 开始）、文本 `Write/Edit`、`NotebookEdit`、`Glob`、`Grep`、`Bash`（命令和毫秒 timeout 原样保留；客户端 schema 声明 `run_in_background` 时也可后台运行）以及 `TaskOutput/TaskStop`。Write 保留 file_path/content；Edit 保留 file_path、非空 old_string、new_string 和可选 replace_all；NotebookEdit 要求绝对 notebook_path；Glob/Grep 要求非空 pattern，path 省略或为绝对路径。执行和审批仍在 HTTP 客户端环境，由客户端返回真实结果；插件和 Work 不代替客户端执行。调用须通过客户端原始 JSON Schema 校验；只移除 Work 的文本缩略图默认值和默认沙箱选择字段，保留原始 native ID/input 供回传。Work 独有的 Glob 排序、数量上限、目录/符号链接选项，以及 Grep `include`、TaskOutput `shell_id` 等别名不做改写，这类调用继续使用 MCP；客户端没有声明的同名工具（例如 Claude Code 没有的 Glob/Grep/TaskOutput）同样走 MCP。PDF、媒体、未知 Read 文件类型、提权（参数或 Work 调用选项中的沙箱逃逸）和其他不兼容参数继续使用 MCP。
 
 完整工具目录、说明、schema 和历史保持不变；允许并行时，多个独立调用优先使用已有 MCP 批入口。新增原生说明导致提示词超限、但原 MCP 提示词可用时，整项任务退回 MCP，不截断上下文。路由策略随任务检查点保存，切换配置或重启后，等待中的调用仍按原协议恢复。默认关闭；修改配置请通过插件版本热更新或正常停用后重载。该开关改善兼容调用的路由开销，不把 Work Agent 变成底层模型 API，也不保证固定加速比例。
 
 0.3.20 的连接器注册、可用性检查和回收在全局缓存锁外执行，不同工具目录可以独立前进；同目录操作协调等待，等待方可取消。缓存租约、创建/断开前的持久化意图、容量上限和重启恢复保持不变。
+
+0.3.21 把原生转发扩展到 NotebookEdit、Glob、Grep、TaskOutput、TaskStop 和后台 Bash。不支持或客户端未声明的工具仍按原方式提示改走 MCP，回复格式不变。
 
 Work 不把连接器工具直接列给模型：模型要先用 Work 自带的 `tool_search` 搜索，搜到后再按 Work 的方式调用。连接器工具在 Work 里的名字形如 `mcp__independent_http_tools_<编号>__get_weather`（函数名转成小写，`-` 换成 `_`）。`tool_search` 每次只返回 3 个工具。2026-10-16 实测：用完整名字搜索时，连接器工具排在第一；只写 `Read`、`Bash` 这样的函数名时，它排在同名的 Work 自带工具之后；一次搜几个函数（如 `Read Bash`）、写法与 Work 的名字不同（如 `read-File`）或用“读取文件内容”这类描述来搜时，3 个结果全是 Work 自带的工具，模型找不到客户端函数，就直接回答了。0.3.5 及更早的提示词只给出连接器名，13–20 个函数时 7 次里有 2 次这样失败；0.3.6 加上函数名后，Claude Code 3 次里仍有 2 次失败；0.3.7 起提示词列出每个函数的完整名字，并要求每次只按一个完整名字搜索（结果见[验收记录](docs/VALIDATION_CN.md)）。需要确保调用客户端函数时，可以再把 `tool_choice` 设为 `required` 或指定函数（同样是提示词要求，见上表）。
 

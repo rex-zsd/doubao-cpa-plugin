@@ -26,7 +26,7 @@ func RunCLI() (resultErr error) {
 	filePath := flag.String("file", "", "local file to register")
 	fileID := flag.String("file-id", "", "account-local file identifier")
 	toolSchema := flag.String("tool-schema", "", "private MCP descriptor schema file")
-	nativeTools := flag.Bool("native-tools", false, "forward compatible native text Read/Edit/Write and foreground Bash to the HTTP caller; other tools retain MCP")
+	nativeTools := flag.Bool("native-tools", false, "forward compatible native text Read/Edit/Write, NotebookEdit, Glob, Grep, Bash (also background) and TaskOutput/TaskStop to the HTTP caller; other tools retain MCP")
 	legacyNativeProbe := flag.Bool("native-tools-probe", false, "alias for -native-tools (legacy probe scripts)")
 	flag.Parse()
 	if *action == "mcp-nonce" {

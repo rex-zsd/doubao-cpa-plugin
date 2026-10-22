@@ -50,7 +50,7 @@ func (g *gateway) toolReply(ctx context.Context, t *gatewayTurn, native object, 
 	}
 	scope := toolMediaScope{model: model, taskID: t.id, prompt: jsonText(contextMessages), nativeID: textValue(native["id"]), suspending: func() bool { g.mu.Lock(); defer g.mu.Unlock(); return g.suspending }}
 	reply, err := g.c.nativeToolReply(context.WithValue(ctx, toolMediaScopeKey{}, scope), native, value, batch, isError)
-	if err == nil && (native["name"] == "Read" || native["name"] == "Bash" || native["name"] == "Write" || native["name"] == "Edit") {
+	if err == nil && nativeToolName(textValue(native["name"])) {
 		// Builtins use content/isError directly; raw_result belongs to MCP.
 		content := field(parsed(reply["raw_result"]), "content")
 		delete(reply, "raw_result")
