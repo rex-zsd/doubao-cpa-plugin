@@ -111,6 +111,12 @@ func RunCLI() (resultErr error) {
 		return err
 	}
 	if *action == "serve" {
+		if spec := os.Getenv("DOUBAO_HELPER_TEST_DROP"); spec != "" {
+			if !installTestStreamDrop(c, spec) {
+				return errors.New("DOUBAO_HELPER_TEST_DROP must be <path>:<events>")
+			}
+			fmt.Fprintln(os.Stderr, "GATEWAY_TEST_STREAM_DROP armed")
+		}
 		return serveGateway(c, private, *listen, *taskTimeout, *nativeTools || *legacyNativeProbe)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
