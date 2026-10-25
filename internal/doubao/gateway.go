@@ -504,6 +504,10 @@ type gateway struct {
 	wg      sync.WaitGroup
 	// Tests substitute only the upstream task runner, exercising real HTTP/state code.
 	run func(*gatewayTurn)
+	// For the plugin page: when requests last arrived and how recent tasks
+	// ended, as metadata only.
+	lastRequest time.Time
+	outcomes    []taskOutcome
 }
 
 func newGateway(ctx context.Context, c *Client, models []Model, dir string, timeout time.Duration) *gateway {
@@ -747,6 +751,7 @@ func (g *gateway) submit(req apiRequest, key string) (*apiExchange, *apiError) {
 		return nil, apiFail(503, "gateway_shutting_down", "Gateway is shutting down")
 	}
 	g.sweepLocked()
+	g.lastRequest = time.Now()
 	if len(key) > 128 {
 		return nil, apiFail(400, "invalid_idempotency_key", "Idempotency-Key exceeds 128 characters")
 	}
@@ -1052,6 +1057,10 @@ func (g *gateway) startLocked(req apiRequest, key string, transcript bool) (*api
 // so retrying is safe, and 429 is the one 4xx every client retries (Codex
 // never retries 409). The CPA plugin's auth turns off cooldown, so the
 // refusal does not bench the model.
+// activeTaskLimit is how many tasks may run at once; a further request evicts
+// the task waiting longest on a tool result, if any.
+const activeTaskLimit = 4
+
 func (g *gateway) reserveLocked() *apiError {
 	full := apiFail(429, "gateway_capacity", "Gateway capacity reached; wait for existing tasks to finish")
 	for len(g.turns) >= 128 {
@@ -1077,7 +1086,7 @@ func (g *gateway) reserveLocked() *apiError {
 			parked = t
 		}
 	}
-	if active < 4 {
+	if active < activeTaskLimit {
 		return nil
 	}
 	if parked == nil {
@@ -1186,6 +1195,7 @@ func (g *gateway) finish(t *gatewayTurn, text string, failure *apiError) {
 	if failure == nil {
 		g.rememberLocked(t, text)
 	}
+	g.recordOutcomeLocked(t, failure)
 	g.mu.Unlock()
 	t.cancel()
 	stage := "final_ready"

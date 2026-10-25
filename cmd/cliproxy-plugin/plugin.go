@@ -18,6 +18,9 @@ import (
 
 const provider = "doubao-work"
 
+// pluginVersion is reported to CPA and shown on the plugin page.
+const pluginVersion = "0.3.21"
+
 type object = map[string]any
 type config struct {
 	StateDir    string `yaml:"state_dir"`
@@ -267,7 +270,7 @@ func dispatch(method string, raw []byte) (any, error) {
 		}
 		runtime.closed = false
 		runtime.Unlock()
-		return object{"schema_version": 6, "metadata": object{"Name": provider, "Version": "0.3.21", "Author": "rex", "GitHubRepository": "https://github.com/rex-zsd/doubao-cpa-plugin", "ConfigFields": []any{object{"Name": "state_dir", "Type": "string", "Description": "Private account and task state directory"}, object{"Name": "helper_path", "Type": "string", "Description": "Absolute path to doubao-helper"}, object{"Name": "native_tools", "Type": "boolean", "Description": "Forward compatible native text Read, Edit, Write, NotebookEdit, Glob, Grep, Bash (also background), TaskOutput and TaskStop to the caller; default false, retain MCP for incompatible tools"}}}, "capabilities": object{"auth_provider": true, "model_provider": true, "executor": true, "executor_model_scope": "oauth", "executor_input_formats": []string{"chat-completions", "openai-response"}, "executor_output_formats": []string{"chat-completions"}}}, nil
+		return object{"schema_version": 6, "metadata": object{"Name": provider, "Version": pluginVersion, "Author": "rex", "GitHubRepository": "https://github.com/rex-zsd/doubao-cpa-plugin", "ConfigFields": []any{object{"Name": "state_dir", "Type": "string", "Description": "Private account and task state directory"}, object{"Name": "helper_path", "Type": "string", "Description": "Absolute path to doubao-helper"}, object{"Name": "native_tools", "Type": "boolean", "Description": "Forward compatible native text Read, Edit, Write, NotebookEdit, Glob, Grep, Bash (also background), TaskOutput and TaskStop to the caller; default false, retain MCP for incompatible tools"}}}, "capabilities": object{"auth_provider": true, "model_provider": true, "executor": true, "management_api": true, "executor_model_scope": "oauth", "executor_input_formats": []string{"chat-completions", "openai-response"}, "executor_output_formats": []string{"chat-completions"}}}, nil
 	case "plugin.shutdown", "plugin.quiesce":
 		closePlugin()
 		return object{}, nil
@@ -290,7 +293,9 @@ func dispatch(method string, raw []byte) (any, error) {
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		if err = s.Validate(ctx); err != nil {
+		err = s.Validate(ctx)
+		noteLoginCheck(err)
+		if err != nil {
 			return nil, &statusError{401, "Doubao login expired; sign in again"}
 		}
 		return object{"Auth": authRecord(req.AuthID), "NextRefreshAfter": time.Now().Add(30 * time.Minute)}, nil
@@ -365,6 +370,10 @@ func dispatch(method string, raw []byte) (any, error) {
 			_ = hostCall("host.stream.close", close, nil)
 		}()
 		return object{"headers": http.Header{"Content-Type": {"text/event-stream"}, "X-Doubao-Usage": {"estimated"}}}, nil
+	case "management.register":
+		return managementRegistration(), nil
+	case "management.handle":
+		return handleManagement(raw), nil
 	case "executor.count_tokens":
 		return nil, &statusError{400, "Exact token counting is unavailable for Doubao Work"}
 	case "executor.http_request":

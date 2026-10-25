@@ -390,14 +390,14 @@ func (c *Client) runObserved(ctx context.Context, body object, receiptPath strin
 	// readback. A dropped stream never leads to another generation.
 	following := err == nil
 	if !following {
-		fmt.Fprintln(os.Stderr, "GATEWAY_STREAM_RESUMED via=readback")
+		c.streamResumed("readback")
 	}
 	for i := 0; following && i < len(r.Tasks); i++ {
 		if err = c.followTask(ctx, r.Tasks[i], callback); err != nil {
 			if !streamDropped(err) || ctx.Err() != nil {
 				return r, err
 			}
-			fmt.Fprintln(os.Stderr, "GATEWAY_STREAM_RESUMED via=readback")
+			c.streamResumed("readback")
 			following = false
 		}
 	}
@@ -439,7 +439,7 @@ func (c *Client) followTask(ctx context.Context, t *task, callback func(string, 
 	var err error
 	for attempt := 0; attempt < 3; attempt++ {
 		if attempt > 0 {
-			fmt.Fprintln(os.Stderr, "GATEWAY_STREAM_RESUMED via=cursor")
+			c.streamResumed("cursor")
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -475,6 +475,11 @@ func (c *Client) followTask(ctx context.Context, t *task, callback func(string, 
 		}
 	}
 	return err
+}
+
+func (c *Client) streamResumed(via string) {
+	c.resumes.Add(1)
+	fmt.Fprintln(os.Stderr, "GATEWAY_STREAM_RESUMED via="+via)
 }
 
 // Stream failures that leave an accepted run going upstream.

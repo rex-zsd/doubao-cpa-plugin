@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -167,6 +168,8 @@ type Client struct {
 	// session.json that another process, normally helper login, replaced.
 	deferToNewer bool
 	saved        os.FileInfo
+	// resumes counts accepted runs whose dropped stream was resumed.
+	resumes atomic.Int64
 }
 
 func newClient(dir string) (*Client, error) {

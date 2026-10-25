@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>豆包 Work 插件</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #fff; --text: #1d2129; --muted: #6b7280; --line: #e5e7eb;
+  --accent: #2563eb; --accent-text: #fff; --ok: #15803d; --warn: #b45309; --bad: #b91c1c;
+  --ok-bg: #dcfce7; --warn-bg: #fef3c7; --bad-bg: #fee2e2; --chip: #eef2f7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111317; --card: #1a1d23; --text: #e6e8eb; --muted: #9aa3ae; --line: #2a2f37;
+    --accent: #4f8cff; --accent-text: #fff; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171;
+    --ok-bg: #12301f; --warn-bg: #33270d; --bad-bg: #3a1618; --chip: #242932;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+main { max-width: 1080px; margin: 0 auto; padding: 20px 16px 40px; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+h1 { font-size: 20px; margin: 0; font-weight: 650; }
+h2 { font-size: 15px; margin: 0 0 12px; font-weight: 600; }
+.muted { color: var(--muted); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 12px; background: var(--chip); }
+.pill.ok { background: var(--ok-bg); color: var(--ok); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); }
+.grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
+.wide { grid-column: 1 / -1; }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.stat b { display: block; font-size: 20px; font-weight: 650; }
+.stat span { font-size: 12px; color: var(--muted); }
+button { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--text); padding: 6px 14px; border-radius: 8px; cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+button.danger { color: var(--bad); }
+button:disabled { opacity: .5; cursor: default; }
+input, select, textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; width: 100%; }
+textarea { resize: vertical; min-height: 64px; }
+label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.qr { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.qr img { width: 180px; height: 180px; image-rendering: pixelated; background: #fff; padding: 8px; border-radius: 8px; border: 1px solid var(--line); }
+.table { width: 100%; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; }
+td.state { white-space: normal; min-width: 120px; }
+.reply { white-space: pre-wrap; word-break: break-word; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-top: 10px; max-height: 320px; overflow: auto; }
+.error { color: var(--bad); }
+.list { margin: 6px 0 0; padding: 0; list-style: none; font-size: 13px; }
+.list li { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dashed var(--line); }
+#gate { max-width: 420px; margin: 60px auto; }
+[hidden] { display: none !important; }
+@media (max-width: 760px) { .grid { grid-template-columns: minmax(0, 1fr); } .opt { display: none; } }
+</style>
+</head>
+<body>
+<main>
+  <section id="gate" class="card" hidden>
+    <h2>连接插件</h2>
+    <p class="muted">输入 CPA 的管理密钥（与管理面板登录用的是同一个）。页面本身不含任何数据，所有信息都通过需要这个密钥的接口读取。</p>
+    <label for="key">管理密钥</label>
+    <input id="key" type="password" autocomplete="current-password">
+    <div class="row" style="margin-top:10px">
+      <label class="row" style="margin:0;color:var(--text)"><input id="remember" type="checkbox" style="width:auto"> 在这台设备上记住</label>
+    </div>
+    <div class="row" style="margin-top:12px"><button id="connect" class="primary">连接</button><span id="gateError" class="error"></span></div>
+  </section>
+
+  <div id="app" hidden>
+    <header>
+      <h1>豆包 Work 插件</h1>
+      <span id="version" class="pill"></span>
+      <span id="loginPill" class="pill"></span>
+      <span class="muted" id="updated"></span>
+      <span style="flex:1"></span>
+      <button id="forget">退出</button>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <h2>登录</h2>
+        <div id="loginText"></div>
+        <div class="muted" id="loginChecked"></div>
+        <div class="row" style="margin-top:12px"><button id="loginStart">扫码登录</button></div>
+        <div id="qrBox" class="qr" hidden>
+          <img id="qrImg" alt="登录二维码">
+          <div>
+            <div>用豆包 App 扫码并确认</div>
+            <div class="muted" id="qrState"></div>
+            <div class="muted" id="qrExpire"></div>
+          </div>
+        </div>
+        <div id="loginError" class="error"></div>
+      </section>
+
+      <section class="card">
+        <h2>运行概览</h2>
+        <div class="stats">
+          <div class="stat"><b id="sActive">–</b><span>运行中任务</span></div>
+          <div class="stat"><b id="sLast">–</b><span>最近一次请求</span></div>
+          <div class="stat"><b id="sDone">–</b><span>近 24 小时完成</span></div>
+          <div class="stat"><b id="sFailed">–</b><span>近 24 小时失败</span></div>
+          <div class="stat"><b id="sResumed">–</b><span>断流后接回（本次加载起）</span></div>
+          <div class="stat"><b id="sReissue">–</b><span>重发已合并（24 小时）</span></div>
+        </div>
+        <ul class="list" id="failures"></ul>
+        <div class="muted" style="margin-top:8px" id="nativeTools"></div>
+      </section>
+
+      <section class="card wide">
+        <div class="row" style="justify-content:space-between"><h2 style="margin:0">任务</h2><span class="muted">每 4 秒刷新；完成的任务保留约 30 分钟</span></div>
+        <div class="table" style="margin-top:10px">
+          <table>
+            <thead><tr><th class="opt">任务</th><th>模型</th><th class="opt">模式</th><th>状态</th><th class="opt">开始</th><th class="opt">剩余时限</th><th class="opt">工具调用</th><th></th></tr></thead>
+            <tbody id="tasks"></tbody>
+          </table>
+        </div>
+        <div id="noTasks" class="muted" style="padding:10px 0" hidden>目前没有任务。</div>
+      </section>
+
+      <section class="card wide">
+        <h2>测试</h2>
+        <div class="row" style="align-items:flex-end">
+          <div style="flex:1;min-width:200px"><label for="model">模型</label><select id="model"></select></div>
+          <button id="send" class="primary">发送</button>
+        </div>
+        <label for="prompt">问题</label>
+        <textarea id="prompt">用一句话介绍你自己。</textarea>
+        <div class="muted" id="testMeta" style="margin-top:8px"></div>
+        <div id="testReply" class="reply" hidden></div>
+        <div id="testError" class="error"></div>
+      </section>
+    </div>
+  </div>
+</main>
+<script>
+(() => {
+  const API = '/v0/management/doubao-work';
+  const STORE = 'doubao-work-console-key';
+  const $ = (id) => document.getElementById(id);
+  let key = '';
+  try { key = sessionStorage.getItem(STORE) || localStorage.getItem(STORE) || ''; } catch (e) {}
+  let timer = null, loginTimer = null, lastStatus = null;
+
+  const OUTCOMES = {
+    ok: '成功', task_expired: '超时未完成', upstream_failed: '上游任务未完成', task_cancelled: '已取消',
+    task_superseded: '被新请求替换', task_evicted: '容量不足被挤出', upstream_rejected: '上游拒绝',
+    unconfirmed_completion: '结果未确认', task_not_started: '未能开始', context_length_exceeded: '内容过长',
+    recovery_interrupted: '重启后未能恢复', gateway_shutting_down: '插件重载中', visible_text_changed: '流式文本被改写',
+    state_persistence_failed: '状态写盘失败'
+  };
+  const MODES = { chat: '聊天', tools: '本机工具', work: 'Work' };
+
+  async function call(path, options = {}) {
+    const response = await fetch(API + path, {
+      method: options.method || 'GET',
+      headers: Object.assign({ 'Authorization': 'Bearer ' + key }, options.body ? { 'Content-Type': 'application/json' } : {}),
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      cache: 'no-store'
+    });
+    if (response.status === 401 || response.status === 403) { showGate('密钥不对，或这个地址不允许远程管理。'); throw new Error('unauthorized'); }
+    let data = {};
+    try { data = await response.json(); } catch (e) {}
+    if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
+    return data;
+  }
+
+  function showGate(message) {
+    clearInterval(timer); timer = null;
+    $('app').hidden = true; $('gate').hidden = false;
+    $('gateError').textContent = message || '';
+    $('key').focus();
+  }
+
+  function since(value) {
+    if (!value) return '–';
+    const seconds = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 1000));
+    if (seconds < 60) return seconds + ' 秒前';
+    if (seconds < 3600) return Math.round(seconds / 60) + ' 分钟前';
+    if (seconds < 86400) return Math.round(seconds / 3600) + ' 小时前';
+    return Math.round(seconds / 86400) + ' 天前';
+  }
+  function clock(value) {
+    const d = new Date(value);
+    return isNaN(d) ? '–' : d.toLocaleTimeString('zh-CN', { hour12: false });
+  }
+  function duration(ms) {
+    const s = Math.round(ms / 1000);
+    return s < 60 ? s + ' 秒' : Math.floor(s / 60) + ' 分 ' + (s % 60) + ' 秒';
+  }
+  function cell(row, text, cls) {
+    const td = document.createElement('td');
+    td.textContent = text;
+    if (cls) td.className = cls;
+    row.appendChild(td);
+    return td;
+  }
+
+  function renderStatus(s) {
+    lastStatus = s;
+    $('version').textContent = 'v' + s.version;
+    const login = s.login || {};
+    const pill = $('loginPill');
+    const states = { ok: ['ok', '登录正常'], expired: ['bad', '登录已失效'], pending: ['warn', '等待扫码'], unknown: ['warn', '状态未知'] };
+    const [cls, text] = states[login.state] || states.unknown;
+    pill.className = 'pill ' + cls; pill.textContent = text;
+    $('loginText').textContent = login.state === 'ok' ? '豆包登录有效。' : login.state === 'expired' ? '登录已失效，需要重新扫码。' : login.state === 'pending' ? '正在等待扫码确认。' : ('暂时无法确认登录状态' + (login.message ? '：' + login.message : '。'));
+    $('loginChecked').textContent = login.checked_at ? '上次校验：' + clock(login.checked_at) : '';
+    $('loginStart').className = login.state === 'ok' ? '' : 'primary';
+    $('loginStart').textContent = login.state === 'ok' ? '重新扫码登录' : '扫码登录';
+
+    const st = s.stats;
+    $('sActive').textContent = st ? st.active + ' / ' + st.limit : '–';
+    $('sLast').textContent = st && st.last_request_at ? since(st.last_request_at) : '–';
+    const failed = st ? st.finished - (st.outcomes.ok || 0) : null;
+    $('sDone').textContent = st ? String(st.outcomes.ok || 0) : '–';
+    $('sFailed').textContent = st ? String(failed) : '–';
+    $('sResumed').textContent = st ? String(st.resumed_streams) : '–';
+    $('sReissue').textContent = st ? String(st.deduplicated_reissues) : '–';
+    const list = $('failures');
+    list.textContent = '';
+    if (st) {
+      Object.entries(st.outcomes).filter(([code]) => code !== 'ok').sort((a, b) => b[1] - a[1]).forEach(([code, count]) => {
+        const li = document.createElement('li');
+        const name = document.createElement('span'); name.textContent = OUTCOMES[code] || code;
+        const value = document.createElement('span'); value.className = 'muted'; value.textContent = count + ' 次';
+        li.append(name, value); list.appendChild(li);
+      });
+    }
+    $('nativeTools').textContent = '原生工具转发：' + (s.native_tools ? '开启' : '关闭') + (s.service_open ? '' : ' · 服务尚未加载');
+
+    const select = $('model');
+    const models = s.models || [];
+    if (select.options.length !== models.length) {
+      const current = select.value;
+      select.textContent = '';
+      models.forEach((m) => { const o = document.createElement('option'); o.value = m.id; o.textContent = m.name + '（' + m.id + '）'; select.appendChild(o); });
+      if (current) select.value = current;
+    }
+    $('updated').textContent = '更新于 ' + clock(Date.now());
+  }
+
+  function renderTasks(tasks) {
+    const body = $('tasks');
+    body.textContent = '';
+    $('noTasks').hidden = tasks.length > 0;
+    tasks.forEach((t) => {
+      const tr = document.createElement('tr');
+      cell(tr, t.id.slice(0, 8), 'opt');
+      cell(tr, t.model || '–');
+      cell(tr, MODES[t.mode] || t.mode, 'opt');
+      if (t.state === 'waiting_tool') cell(tr, '等本机工具 ' + t.tool + '（已等 ' + duration(t.waiting_ms) + '）', 'state');
+      else if (t.state === 'running') cell(tr, '豆包处理中', 'state');
+      else cell(tr, t.outcome === 'ok' ? '✓ 完成' : '✗ ' + (OUTCOMES[t.outcome] || t.outcome), t.outcome === 'ok' ? 'state' : 'state error');
+      cell(tr, clock(t.state === 'done' ? t.finished : t.started) + (t.state === 'done' ? ' 结束' : ''), 'opt');
+      cell(tr, t.deadline ? duration(Math.max(0, new Date(t.deadline) - Date.now())) : '–', 'opt');
+      cell(tr, t.forwarded + (t.reissues ? '（合并重发 ' + t.reissues + '）' : ''), 'opt');
+      const actions = cell(tr, '');
+      if (t.state !== 'done') {
+        const b = document.createElement('button'); b.className = 'danger'; b.textContent = '取消';
+        b.onclick = async () => {
+          if (!confirm('取消这个任务？正在等它的客户端会收到「已取消」，之后重发对话会开新任务。')) return;
+          b.disabled = true;
+          try { await call('/tasks/cancel', { method: 'POST', body: { id: t.id } }); } catch (e) { alert('取消失败：' + e.message); }
+          refresh();
+        };
+        actions.appendChild(b);
+      }
+      body.appendChild(tr);
+    });
+  }
+
+  async function refresh() {
+    try {
+      const [s, t] = await Promise.all([call('/status'), call('/tasks')]);
+      renderStatus(s); renderTasks(t.tasks || []);
+    } catch (e) {
+      if (e.message !== 'unauthorized') $('updated').textContent = '刷新失败：' + e.message;
+    }
+  }
+
+  function start() {
+    $('gate').hidden = true; $('app').hidden = false;
+    refresh();
+    clearInterval(timer);
+    timer = setInterval(refresh, 4000);
+  }
+
+  $('connect').onclick = () => {
+    key = $('key').value.trim();
+    if (!key) return;
+    try {
+      sessionStorage.setItem(STORE, key);
+      if ($('remember').checked) localStorage.setItem(STORE, key); else localStorage.removeItem(STORE);
+    } catch (e) {}
+    start();
+  };
+  $('key').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('connect').click(); });
+  $('forget').onclick = () => {
+    try { sessionStorage.removeItem(STORE); localStorage.removeItem(STORE); } catch (e) {}
+    key = ''; $('key').value = ''; showGate('');
+  };
+
+  $('loginStart').onclick = async () => {
+    if (lastStatus && lastStatus.login && lastStatus.login.state === 'ok' && !confirm('当前登录有效。重新扫码会换成新扫码的账号，确定吗？')) return;
+    $('loginError').textContent = '';
+    $('loginStart').disabled = true;
+    try {
+      const r = await call('/login/start', { method: 'POST', body: {} });
+      if (!r.qr) throw new Error('没有拿到二维码');
+      $('qrImg').src = r.qr; $('qrBox').hidden = false;
+      $('qrState').textContent = '等待扫码…';
+      const expires = r.expires_at ? new Date(r.expires_at) : null;
+      clearInterval(loginTimer);
+      loginTimer = setInterval(async () => {
+        if (expires) $('qrExpire').textContent = '二维码剩余 ' + duration(Math.max(0, expires - Date.now()));
+        try {
+          const p = await call('/login/status?state=' + encodeURIComponent(r.state));
+          if (p.status === 'success') {
+            clearInterval(loginTimer); $('qrState').textContent = '登录成功'; $('qrBox').hidden = true; $('loginStart').disabled = false; refresh();
+          } else if (p.status === 'error') {
+            clearInterval(loginTimer); $('qrBox').hidden = true; $('loginError').textContent = p.message || '登录失败，请重试'; $('loginStart').disabled = false;
+          } else {
+            $('qrState').textContent = p.message === 'scanned' ? '已扫码，请在手机上确认' : p.message === 'confirmed' ? '已确认，正在完成登录…' : '等待扫码…';
+          }
+        } catch (e) {
+          if (e.message === 'unauthorized') { clearInterval(loginTimer); return; }
+          clearInterval(loginTimer); $('qrBox').hidden = true; $('loginError').textContent = e.message; $('loginStart').disabled = false;
+        }
+      }, 2000);
+    } catch (e) {
+      $('loginError').textContent = e.message; $('loginStart').disabled = false;
+    }
+  };
+
+  $('send').onclick = async () => {
+    const model = $('model').value, prompt = $('prompt').value.trim();
+    if (!model || !prompt) return;
+    $('send').disabled = true; $('testError').textContent = ''; $('testReply').hidden = true;
+    $('testMeta').textContent = '发送中…（会在豆包账号里留下一条对话）';
+    try {
+      const r = await call('/test', { method: 'POST', body: { model, prompt } });
+      $('testMeta').textContent = (r.first_text_ms ? '首字 ' + (r.first_text_ms / 1000).toFixed(1) + ' 秒 · ' : '') + '总耗时 ' + (r.total_ms / 1000).toFixed(1) + ' 秒';
+      if (r.reply) { $('testReply').textContent = r.reply; $('testReply').hidden = false; }
+      if (!r.ok) $('testError').textContent = r.error || '失败';
+    } catch (e) {
+      $('testMeta').textContent = ''; $('testError').textContent = e.message;
+    }
+    $('send').disabled = false;
+    refresh();
+  };
+
+  if (key) start(); else showGate('');
+})();
+</script>
+</body>
+</html>
