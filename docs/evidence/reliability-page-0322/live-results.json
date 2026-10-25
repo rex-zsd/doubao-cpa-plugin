@@ -1,0 +1,31 @@
+{
+  "date_utc": "2026-10-25",
+  "model": "doubao-orange-5.5 unless noted",
+  "reissue_merge": [
+    {"case": "client answers after the re-issue arrived", "tool_call_ready_s": 12.1, "reissue_signed_after_original_s": 65.1, "client_held_s": 65.6, "reissues_arrived": 1, "deduplicated": 1, "frames_uploaded": 2, "calls_seen_by_client": 1, "final_after_result_s": 7.5, "answer_used_tool_result": true},
+    {"case": "client answers after 130 s", "reissues_arrived": 1, "work_stream_finished_after_call_s": 129.6, "result_arrived_after_stream_end": true}
+  ],
+  "stream_resume": [
+    {"case": "chat, completion stream cut after 3 data events", "status": 200, "seconds": 6.2, "answer_correct": true, "resumed_via": "readback", "generations": 1},
+    {"case": "tool run, completion stream cut after 3 data events", "tool_call_s": 12.1, "final_after_result_s": 4.6, "answer_used_tool_result": true, "resumed_via": "readback", "generations": 1},
+    {"case": "tool run, completion stream cut after 12 data events", "tool_call_s": 13.2, "final_after_result_s": 5.1, "answer_used_tool_result": true, "resumed_via": "readback", "generations": 1},
+    {"case": "cut before ACK", "status": 409, "receipt_events": 0, "accepted": false}
+  ],
+  "plugin_page_on_temporary_cpa_8_0_13": {
+    "panel_menu_listed": true,
+    "page_without_key": {"status": 200, "content_security_policy": true},
+    "status_without_key": 401,
+    "status_with_key": {"status": 200, "version": "0.3.22", "login": "ok"},
+    "test_button": {"model": "doubao-2.1-lite", "ok": true, "first_text_ms": 1761, "total_ms": 3976},
+    "task_panel_waiting_call": {"tool": "get_weather", "mode": "tools", "model": "doubao-2.1-pro", "has_deadline": true},
+    "cancel": {"status": 200, "outcome": "task_cancelled"},
+    "late_tool_result_after_cancel": {"status": 200, "seconds": 9.2, "new_task": true, "answer_used_tool_result": true},
+    "stats_after": {"ok": 2, "task_cancelled": 1},
+    "login_start": {"status": 200, "qr_png_bytes": 5045, "login_status": "pending", "scanned": false}
+  },
+  "tool_run_text_structure": [
+    {"model": "doubao-orange-5.5", "final_chars": 478, "final_chunks": 1, "final_span_ms": 0},
+    {"model": "doubao-2.1-pro", "final_chars": 451, "final_chunks": 42, "final_span_ms": 4861},
+    {"model": "doubao-gpt-6-astra", "final_chars": 319, "final_chunks": 17, "final_span_ms": 3625}
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "version": "0.3.22",
+  "source_commit": "ede2060",
+  "base_commit": "7a7a168",
+  "plugin_sha256": "aed4b7dd0c93f956edea24d23e14f9ae148a4c477fdc752c4b84740e00bfd418",
+  "helper_sha256": "5edc94aa17a532939313e6a244be669add869608badd2526a8486dcfc476bece",
+  "validation": [
+    "gofmt -l . (empty)",
+    "go vet ./...",
+    "go test -race -count=1 ./..."
+  ],
+  "toolchain": "golang:1.26-bookworm (go1.26.9)",
+  "cpa": "8.0.13"
+}

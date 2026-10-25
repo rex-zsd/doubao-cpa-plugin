@@ -1,5 +1,7 @@
 # 0.3.21：更多原生工具转发
 
+后续 0.3.22 合并 Work 重发、续接断开的回复流并新增插件页面，见[重发合并、断流续接与插件页面](RELIABILITY_PAGE_0322_CN.md)。本页保留 0.3.21 当时的范围和测量。
+
 2026-10-22（UTC）已在线上官方 CPA v8.0.13 热加载 0.3.21。实现提交为 `407a178`。本批把 `native_tools: true` 的原生转发扩展到 NotebookEdit、Glob、Grep、TaskOutput、TaskStop 和后台 Bash。保持 Orange 5.5、原推理档位、完整历史和工具契约。
 
 ## 转发条件
