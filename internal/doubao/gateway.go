@@ -449,6 +449,14 @@ type gatewayTurn struct {
 	// sends only the messages after the first continued ones.
 	conversation, mode, workspace string
 	continued                     int
+	// open maps the signature of each native call received and not yet
+	// answered to its native ID. Work gives a client function about a minute,
+	// then sends the same call again under a new native ID; a twin arriving
+	// while its original is open is recorded in twins and reuses the
+	// original's result instead of running the client tool again. Not
+	// persisted: after recovery a re-issue runs once more.
+	open, twins map[string]string
+	reissues    int
 }
 
 // threadTTL and threadLimit bound how long and how many answered

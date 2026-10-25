@@ -17,16 +17,9 @@ type toolMediaScope struct {
 	suspending               func() bool
 }
 
-func (g *gateway) toolReply(ctx context.Context, t *gatewayTurn, native object, value string, batch bool) (object, error) {
+func (g *gateway) toolReply(ctx context.Context, t *gatewayTurn, native object, value string, isError, batch bool) (object, error) {
 	g.mu.Lock()
 	req := t.request
-	isError := false
-	for _, p := range g.calls {
-		if p.turn == t && p.nativeID == textValue(native["id"]) {
-			isError = p.isError
-			break
-		}
-	}
 	g.mu.Unlock()
 	model, _, _ := selectModel(g.models, req.Model, "work")
 	// The auxiliary reader sees text context, never inline base64 as prompt text.
@@ -64,7 +57,7 @@ func (g *gateway) toolReply(ctx context.Context, t *gatewayTurn, native object, 
 func (g *gateway) awaitNativePending(ctx context.Context, t *gatewayTurn, p *clientToolPending, native object) (object, error) {
 	select {
 	case value := <-p.result:
-		return g.toolReply(ctx, t, native, value, len(p.batchCalls) > 0)
+		return g.toolReply(ctx, t, native, value, p.isError, len(p.batchCalls) > 0)
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}

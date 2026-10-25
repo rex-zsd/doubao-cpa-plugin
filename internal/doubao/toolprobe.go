@@ -236,6 +236,8 @@ type toolProbe struct {
 	invoke                                            func(context.Context, string, object) (object, error)
 	forward                                           func(context.Context, object, object) (object, error)
 	uploadTiming                                      func(time.Time)
+	// answered runs after a client call's result is uploaded.
+	answered func(object)
 }
 
 func ownedRelative(root, name string) (string, error) {
@@ -471,6 +473,9 @@ func (p *toolProbe) handle(ctx context.Context, frame object) error {
 	}
 	if p.uploadTiming != nil {
 		p.uploadTiming(uploadStarted)
+	}
+	if kind == 1 && p.answered != nil {
+		p.answered(call)
 	}
 	record["uploaded"], record["upload_response"] = true, response
 	if proof, ok := record["proof"].(map[string]any); ok {

@@ -419,6 +419,16 @@ func (g *gateway) forwardClientTool(ctx context.Context, t *gatewayTurn, call, i
 	if pending := g.findNativePending(t, textValue(call["id"])); pending != nil {
 		return g.awaitNativePending(ctx, t, pending, call)
 	}
+	// Work's re-issue of a call it gave up waiting for gets the original's
+	// result; the caller never runs the function a second time.
+	if original := g.reissueTarget(t, call); original != nil {
+		g.mu.Lock()
+		value, isError, batch := original.value, original.isError, len(original.batchCalls) > 0
+		g.mu.Unlock()
+		fmt.Fprintln(os.Stderr, "GATEWAY_TOOL_REISSUE_DEDUPED")
+		timing(t, "tool_reissue_deduped", time.Time{})
+		return g.toolReply(ctx, t, call, value, isError, batch)
+	}
 	name := textValue(input["remote_tool_name"])
 	batch, isBatch := batchRouteFor(initial, name)
 	allowed := false
@@ -485,7 +495,7 @@ func (g *gateway) forwardClientTool(ctx context.Context, t *gatewayTurn, call, i
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
-	return g.toolReply(ctx, t, call, value, false)
+	return g.toolReply(ctx, t, call, value, p.isError, false)
 }
 
 func (g *gateway) runNative(t *gatewayTurn) {
@@ -663,9 +673,7 @@ func (g *gateway) runWithTools(t *gatewayTurn, req apiRequest, model Model) (*Re
 	if err != nil {
 		return nil, err
 	}
-	p := &toolProbe{c: g.c, sandbox: sandbox, workspace: workspace, connector: connector, journal: filepath.Join(g.dir, "gateway-native-"+t.id+".json"), events: map[string]int{}, records: map[string]object{}, forward: func(ctx context.Context, call, input object) (object, error) {
-		return g.forwardClientTool(ctx, t, call, input)
-	}, uploadTiming: func(started time.Time) { timing(t, "native_result_uploaded", started) }}
+	p := g.taskProbe(t, sandbox, workspace, connector)
 	build := func(conversation string) (object, error) {
 		part := req
 		skip := 0
@@ -759,6 +767,14 @@ func (g *gateway) runWithTools(t *gatewayTurn, req apiRequest, model Model) (*Re
 	return receipt, nil
 }
 
+// taskProbe handles the native tool frames of a task: client calls go to the
+// caller, and each uploaded result closes its call for re-issue detection.
+func (g *gateway) taskProbe(t *gatewayTurn, sandbox, workspace, connector string) *toolProbe {
+	return &toolProbe{c: g.c, sandbox: sandbox, workspace: workspace, connector: connector, journal: filepath.Join(g.dir, "gateway-native-"+t.id+".json"), events: map[string]int{}, records: map[string]object{}, forward: func(ctx context.Context, call, input object) (object, error) {
+		return g.forwardClientTool(ctx, t, call, input)
+	}, uploadTiming: func(started time.Time) { timing(t, "native_result_uploaded", started) }, answered: func(call object) { g.closeCall(t, call) }}
+}
+
 type toolInbox struct {
 	frames chan object
 	done   <-chan struct{}
@@ -845,12 +861,92 @@ func (g *gateway) deliver(ctx context.Context, frame object) {
 	inbox, ok := g.inboxes[frameSandbox(frame)]
 	g.inboxMu.Unlock()
 	if ok {
+		g.noteArrival(frame)
 		select {
 		case inbox.frames <- frame:
 		case <-inbox.done:
 		case <-ctx.Done():
 		}
 	}
+}
+
+// callSignature identifies a native call by its name and input, never by its
+// ID, which Work replaces when it re-issues the call. Connector arguments are
+// compared as JSON values, not by their encoding.
+func callSignature(call object) string {
+	input := parsed(call["input"])
+	if fields, ok := input.(map[string]any); ok {
+		if raw, ok := fields["raw_arguments"].(string); ok {
+			copied := object{}
+			for key, value := range fields {
+				copied[key] = value
+			}
+			copied["raw_arguments"] = parsed(raw)
+			input = copied
+		}
+	}
+	return apiHash(object{"name": call["name"], "input": input})
+}
+
+// noteArrival opens a native client call as it arrives, before its task
+// handles it. An identical call arriving while the first is still open is
+// Work's re-issue and becomes its twin. A call arriving after the original
+// was answered is a new call, even with the same arguments.
+func (g *gateway) noteArrival(frame object) {
+	call, _ := frame["tool_call"].(map[string]any)
+	id := textValue(call["id"])
+	if number(frame["event_type"]) != 1 || id == "" {
+		return
+	}
+	sandbox, signature := frameSandbox(frame), callSignature(call)
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for _, t := range g.turns {
+		if t.done || t.sandbox != sandbox {
+			continue
+		}
+		if t.open == nil {
+			t.open, t.twins = map[string]string{}, map[string]string{}
+		}
+		if first, ok := t.open[signature]; !ok {
+			t.open[signature] = id
+		} else if first != id {
+			t.twins[id] = first
+			fmt.Fprintln(os.Stderr, "GATEWAY_TOOL_REISSUE_ARRIVED")
+		}
+		return
+	}
+}
+
+// closeCall marks a native call answered once its result is uploaded.
+func (g *gateway) closeCall(t *gatewayTurn, call object) {
+	signature := callSignature(call)
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if t.open[signature] == textValue(call["id"]) {
+		delete(t.open, signature)
+	}
+}
+
+// reissueTarget returns the answered call that a re-issued native call
+// repeats. Frames of a task are handled in order, so the original was
+// answered first; one that failed ended the task before its twin.
+func (g *gateway) reissueTarget(t *gatewayTurn, call object) *clientToolPending {
+	id := textValue(call["id"])
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	first, ok := t.twins[id]
+	if !ok {
+		return nil
+	}
+	delete(t.twins, id)
+	for _, p := range g.calls {
+		if p.turn == t && p.nativeID == first && p.submitted {
+			t.reissues++
+			return p
+		}
+	}
+	return nil
 }
 
 // Read-only remote audit of our own saved experiments. Never issues connector

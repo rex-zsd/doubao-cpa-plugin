@@ -141,7 +141,7 @@ func (g *gateway) forwardClientBatch(ctx context.Context, t *gatewayTurn, native
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
-	return g.toolReply(ctx, t, native, value, true)
+	return g.toolReply(ctx, t, native, value, p.isError, true)
 }
 
 func (g *gateway) rejectClientBatch(t *gatewayTurn, native object, message string) (object, error) {

@@ -246,9 +246,7 @@ func (g *gateway) resumeNative(t *gatewayTurn) {
 		if resolved, err := filepath.EvalSymlinks(workspace); err == nil {
 			workspace = resolved
 		}
-		p := &toolProbe{c: g.c, sandbox: t.sandbox, workspace: workspace, connector: t.connector, journal: filepath.Join(g.dir, "gateway-native-"+t.id+".json"), events: map[string]int{}, records: map[string]object{}, forward: func(ctx context.Context, call, input object) (object, error) {
-			return g.forwardClientTool(ctx, t, call, input)
-		}}
+		p := g.taskProbe(t, t.sandbox, workspace, t.connector)
 		var saved map[string]object
 		if b, err := os.ReadFile(p.journal); err == nil {
 			_ = json.Unmarshal(b, &saved)
