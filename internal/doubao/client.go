@@ -323,7 +323,7 @@ func (c *Client) request(ctx context.Context, method, route string, params url.V
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		return nil, errors.New("upstream transport failed")
+		return nil, errTransport
 	}
 	if err = c.save(); err != nil {
 		r.Body.Close()
@@ -335,6 +335,10 @@ func (c *Client) request(ctx context.Context, method, route string, params url.V
 	}
 	return r, nil
 }
+
+// errTransport is a request that failed in transit, before any response.
+var errTransport = errors.New("upstream transport failed")
+
 func (c *Client) json(ctx context.Context, method, route string, params url.Values, body any) (object, error) {
 	ctx, cancel := context.WithTimeout(ctx, 25*time.Second)
 	defer cancel()

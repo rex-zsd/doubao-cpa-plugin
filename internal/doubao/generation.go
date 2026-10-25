@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -199,10 +200,10 @@ func consumeSSE(r io.Reader, callback func(string, object, string) (bool, error)
 		}
 	}
 	if err := s.Err(); err != nil {
-		return errors.New("SSE read failed")
+		return errSSERead
 	}
 	if name != "" || len(lines) > 0 {
-		return errors.New("SSE ended inside an event")
+		return errSSETruncated
 	}
 	return nil
 }
@@ -300,7 +301,18 @@ func (c *Client) run(ctx context.Context, body object, receiptPath string) (*Rec
 func (c *Client) runObserved(ctx context.Context, body object, receiptPath string, observe func(string, object) error) (*Receipt, error) {
 	local := textValue(field(array(body["messages"])[0], "local_message_id"))
 	r := &Receipt{ConversationID: textValue(field(body, "client_meta", "conversation_id")), LocalID: local, Tasks: []*task{}, Events: map[string]int{}, Request: body}
-	checkpoint := func() error { return saveJSON(receiptPath, r) }
+	// The receipt carries the whole request, hundreds of KB with a large tool
+	// catalog, so it is written when its durable state changes (dispatch, ACK,
+	// a new task, a terminal event, completion) and otherwise at most once a
+	// second for cursor progress, not after every event.
+	written := time.Time{}
+	checkpoint := func() error { written = time.Now(); return saveJSON(receiptPath, r) }
+	progress := func() error {
+		if time.Since(written) < time.Second {
+			return nil
+		}
+		return checkpoint()
+	}
 	if err := checkpoint(); err != nil {
 		return r, err
 	}
@@ -332,6 +344,7 @@ func (c *Client) runObserved(ctx context.Context, body object, receiptPath strin
 				return false, errors.New("ACK identity mismatch")
 			}
 			r.ConversationID, r.RunID, r.Accepted = id, run, true
+			return false, checkpoint()
 		case "FETCH_STREAM":
 			if number(data["fetch_type"]) == 2 && textValue(data["fetch_key"]) != "" {
 				id := textValue(data["fetch_key"])
@@ -357,7 +370,7 @@ func (c *Client) runObserved(ctx context.Context, body object, receiptPath strin
 		case "STREAM_ERROR", "gateway-error":
 			return false, &upstreamError{Code: number(data["error_code"]), Message: textValue(data["error_msg"])}
 		}
-		return false, checkpoint()
+		return false, progress()
 	}
 	if !strings.Contains(response.Header.Get("Content-Type"), "text/event-stream") {
 		response.Body.Close()
@@ -365,42 +378,31 @@ func (c *Client) runObserved(ctx context.Context, body object, receiptPath strin
 	}
 	err = consumeSSE(response.Body, callback)
 	response.Body.Close()
-	if err != nil {
+	if err != nil && (!r.Accepted || !streamDropped(err) || ctx.Err() != nil) {
 		return r, err
 	}
 	if !r.Accepted {
 		return r, errors.New("no verified ACK; acceptance unknown; do not resend")
 	}
-	for i := 0; i < len(r.Tasks); i++ {
-		t := r.Tasks[i]
-		response, err = c.request(ctx, "POST", "/chat/async/chunk_stream", nil, object{"task_id": t.ID, "seq_start": t.Seq, "append_scene": t.Scene, "ext": object{}})
-		if err != nil {
-			return r, err
+	// Once Work accepted the run it goes on upstream whatever happens to our
+	// streams. A dropped task stream is subscribed again from its cursor; past
+	// that, and for a dropped completion stream, the run is followed by
+	// readback. A dropped stream never leads to another generation.
+	following := err == nil
+	if !following {
+		fmt.Fprintln(os.Stderr, "GATEWAY_STREAM_RESUMED via=readback")
+	}
+	for i := 0; following && i < len(r.Tasks); i++ {
+		if err = c.followTask(ctx, r.Tasks[i], callback); err != nil {
+			if !streamDropped(err) || ctx.Err() != nil {
+				return r, err
+			}
+			fmt.Fprintln(os.Stderr, "GATEWAY_STREAM_RESUMED via=readback")
+			following = false
 		}
-		err = consumeSSE(response.Body, func(name string, data object, id string) (bool, error) {
-			seq := number(id)
-			if seq > 0 && seq <= t.Seq {
-				return false, nil
-			}
-			if seq > t.Seq {
-				t.Seq = seq
-			}
-			if name == "ASYNC_CHUNK_SNAPSHOT" && number(data["next_seq"]) > t.Seq {
-				t.Seq = number(data["next_seq"])
-			}
-			if name == "SSE_REPLY_END" && number(data["end_type"]) == 3 {
-				t.Completed = true
-			}
-			stop, e := callback(name, data, id)
-			return stop, e
-		})
-		response.Body.Close()
-		if err != nil {
-			return r, err
-		}
-		if !t.Completed {
-			return r, errors.New("async task has no terminal event; do not resend")
-		}
+	}
+	if err = checkpoint(); err != nil {
+		return r, err
 	}
 	if observe != nil {
 		if err = observe("GATEWAY_STREAM_FINISHED", nil); err != nil {
@@ -428,6 +430,62 @@ func (c *Client) runObserved(ctx context.Context, body object, receiptPath strin
 		case <-time.After(time.Second):
 		}
 	}
+}
+
+// followTask reads an async task's events after its cursor. A dropped or
+// unterminated stream is subscribed again from the cursor, twice at most;
+// events up to the cursor are skipped.
+func (c *Client) followTask(ctx context.Context, t *task, callback func(string, object, string) (bool, error)) error {
+	var err error
+	for attempt := 0; attempt < 3; attempt++ {
+		if attempt > 0 {
+			fmt.Fprintln(os.Stderr, "GATEWAY_STREAM_RESUMED via=cursor")
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(time.Duration(attempt) * time.Second):
+			}
+		}
+		var response *http.Response
+		response, err = c.request(ctx, "POST", "/chat/async/chunk_stream", nil, object{"task_id": t.ID, "seq_start": t.Seq, "append_scene": t.Scene, "ext": object{}})
+		if err == nil {
+			err = consumeSSE(response.Body, func(name string, data object, id string) (bool, error) {
+				seq := number(id)
+				if seq > 0 && seq <= t.Seq {
+					return false, nil
+				}
+				if seq > t.Seq {
+					t.Seq = seq
+				}
+				if name == "ASYNC_CHUNK_SNAPSHOT" && number(data["next_seq"]) > t.Seq {
+					t.Seq = number(data["next_seq"])
+				}
+				if name == "SSE_REPLY_END" && number(data["end_type"]) == 3 {
+					t.Completed = true
+				}
+				return callback(name, data, id)
+			})
+			response.Body.Close()
+			if err == nil && !t.Completed {
+				err = errTaskUnterminated
+			}
+		}
+		if err == nil || ctx.Err() != nil || !streamDropped(err) {
+			return err
+		}
+	}
+	return err
+}
+
+// Stream failures that leave an accepted run going upstream.
+var (
+	errSSERead          = errors.New("SSE read failed")
+	errSSETruncated     = errors.New("SSE ended inside an event")
+	errTaskUnterminated = errors.New("async task has no terminal event; do not resend")
+)
+
+func streamDropped(err error) bool {
+	return errors.Is(err, errSSERead) || errors.Is(err, errSSETruncated) || errors.Is(err, errTaskUnterminated) || errors.Is(err, errTransport)
 }
 func visibleText(message any) string {
 	blocks := array(field(message, "content_blocks_v2"))
