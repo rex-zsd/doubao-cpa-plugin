@@ -344,6 +344,9 @@ func (c *Client) runObserved(ctx context.Context, body object, receiptPath strin
 				return false, errors.New("ACK identity mismatch")
 			}
 			r.ConversationID, r.RunID, r.Accepted = id, run, true
+			if field(body, "option", "need_create_conversation") == true {
+				c.noteConversation(id)
+			}
 			return false, checkpoint()
 		case "FETCH_STREAM":
 			if number(data["fetch_type"]) == 2 && textValue(data["fetch_key"]) != "" {

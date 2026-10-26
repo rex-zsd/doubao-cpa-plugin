@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -36,8 +37,11 @@ type Service struct {
 	c      *Client
 	g      *gateway
 	cancel context.CancelFunc
-	Models []PublicModel
 	lock   *os.File
+	// mu guards the public catalog, which the plugin page can refresh.
+	mu        sync.Mutex
+	models    []PublicModel
+	refreshed time.Time
 }
 
 func OpenService(ctx context.Context, config ServiceConfig) (*Service, error) {
@@ -79,10 +83,7 @@ func OpenService(ctx context.Context, config ServiceConfig) (*Service, error) {
 		return nil, err
 	}
 	aliases := publicModels(models)
-	public := []PublicModel{}
-	for _, m := range aliases {
-		public = append(public, PublicModel{ID: m.Name, DisplayName: m.Display, Window: m.Window, Efforts: m.Efforts})
-	}
+	public := publicCatalog(aliases)
 	if len(aliases) == 0 {
 		return nil, errors.New("no available Work models")
 	}
@@ -101,7 +102,7 @@ func OpenService(ctx context.Context, config ServiceConfig) (*Service, error) {
 			return nil, err
 		}
 	}
-	s := &Service{c: c, g: g, cancel: stop, Models: public, lock: lock}
+	s := &Service{c: c, g: g, cancel: stop, models: public, refreshed: time.Now(), lock: lock}
 	if err = g.recoverTasks(); err != nil {
 		stop()
 		return nil, err
@@ -186,7 +187,7 @@ func (s *Service) Submit(ctx context.Context, payload []byte, key string) (*Resp
 	if failure != nil {
 		return nil, failure
 	}
-	if _, _, err := selectModel(s.g.models, req.Model, "work"); err != nil {
+	if _, _, err := selectModel(s.g.catalog(), req.Model, "work"); err != nil {
 		// Not model_not_found: CPA would bench the model for 12 hours, past the
 		// next catalog reload that may bring it back.
 		return nil, apiFail(400, "invalid_model", "Select a model listed by /v1/models")

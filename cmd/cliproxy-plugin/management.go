@@ -35,6 +35,11 @@ var managementRoutes = []struct{ method, path string }{
 	{"POST", "/login/start"},
 	{"GET", "/login/status"},
 	{"POST", "/test"},
+	{"POST", "/models/refresh"},
+	{"GET", "/cleanup"},
+	{"POST", "/cleanup/conversations"},
+	{"POST", "/cleanup/connectors"},
+	{"POST", "/cleanup/files"},
 }
 
 func managementRegistration() object {
@@ -46,10 +51,11 @@ func managementRegistration() object {
 }
 
 type managementRequest struct {
-	Method string
-	Path   string
-	Query  url.Values
-	Body   []byte
+	Method     string
+	Path       string
+	Query      url.Values
+	Body       []byte
+	CallbackID string `json:"host_callback_id"`
 }
 
 type managementResponse struct {
@@ -111,6 +117,29 @@ func handleManagement(raw []byte) managementResponse {
 		return managementJSON(200, object{"status": result["Status"], "message": result["Message"]})
 	case "POST /test":
 		return consoleTest(req.Body)
+	case "POST /models/refresh":
+		return consoleRefreshModels(req.CallbackID)
+	case "GET /cleanup":
+		return consoleCleanupSummary()
+	case "POST /cleanup/conversations":
+		var body struct{ Days int }
+		if json.Unmarshal(req.Body, &body) != nil || body.Days < 0 || body.Days > 3650 {
+			return managementError(400, "days must be between 0 and 3650")
+		}
+		return consoleCleanup(func(ctx context.Context, s *doubao.Service) (object, error) {
+			deleted, remaining, err := s.DeleteConversations(ctx, time.Duration(body.Days)*24*time.Hour)
+			return object{"deleted": deleted, "remaining": remaining}, err
+		})
+	case "POST /cleanup/connectors":
+		return consoleCleanup(func(ctx context.Context, s *doubao.Service) (object, error) {
+			removed, err := s.CleanupConnectors(ctx)
+			return object{"removed": removed}, err
+		})
+	case "POST /cleanup/files":
+		return consoleCleanup(func(_ context.Context, s *doubao.Service) (object, error) {
+			deleted, err := s.DeleteFiles()
+			return object{"deleted": deleted}, err
+		})
 	}
 	return managementError(404, "unknown plugin route")
 }
@@ -141,10 +170,10 @@ func noteLoginCheck(err error) {
 
 func consoleStatus() object {
 	runtime.Lock()
-	cfg, flow, open := runtime.config, runtime.login, runtime.service
+	cfg, flow, open, settingsPending := runtime.config, runtime.login, runtime.service, runtime.pending != nil
 	checkedAt, checkErr := loginCheck.at, loginCheck.err
 	runtime.Unlock()
-	status := object{"version": pluginVersion, "native_tools": cfg.NativeTools, "service_open": open != nil}
+	status := object{"version": pluginVersion, "native_tools": cfg.NativeTools, "service_open": open != nil, "settings_pending": settingsPending}
 	login := object{}
 	pending := false
 	if flow != nil {
@@ -180,10 +209,10 @@ func consoleStatus() object {
 		}
 		status["stats"] = s.Stats()
 		models := []any{}
-		for _, m := range s.Models {
+		for _, m := range s.PublicModels() {
 			models = append(models, object{"id": m.ID, "name": m.DisplayName})
 		}
-		status["models"] = models
+		status["models"], status["models_refreshed_at"] = models, s.ModelsRefreshed()
 		status["service_open"] = true
 	}
 	status["login"] = login
@@ -271,6 +300,105 @@ func consoleTest(raw []byte) managementResponse {
 	result := object{"ok": err == nil, "first_text_ms": firstText, "total_ms": time.Since(started).Milliseconds(), "reply": reply.String()}
 	if err != nil {
 		result["error"] = err.Error()
+	}
+	return managementJSON(200, result)
+}
+
+// consoleRefreshModels reloads Work's model list, then rewrites the plugin's
+// auth file with a refresh mark so that CPA reloads the account and asks the
+// plugin for its models again.
+func consoleRefreshModels(callbackID string) managementResponse {
+	s, err := openService()
+	if err != nil {
+		return managementError(errorStatus(err), err.Error())
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	added, removed, err := s.RefreshModels(ctx)
+	if err != nil {
+		return managementError(502, err.Error())
+	}
+	result := object{"added": added, "removed": removed, "total": len(s.PublicModels()), "cpa_notified": false}
+	if err := notifyModelChange(callbackID); err != nil {
+		result["cpa_error"] = err.Error()
+	} else {
+		result["cpa_notified"] = true
+	}
+	return managementJSON(200, result)
+}
+
+func notifyModelChange(callbackID string) error {
+	var list struct {
+		Files []struct {
+			AuthIndex string `json:"auth_index"`
+			Name      string `json:"name"`
+			Provider  string `json:"provider"`
+		} `json:"files"`
+	}
+	if err := hostCall("host.auth.list", object{"host_callback_id": callbackID}, &list); err != nil {
+		return err
+	}
+	for _, file := range list.Files {
+		if file.Provider != provider && file.Name != "doubao-work.json" {
+			continue
+		}
+		var current struct {
+			Name string          `json:"name"`
+			JSON json.RawMessage `json:"json"`
+		}
+		if err := hostCall("host.auth.get", object{"auth_index": file.AuthIndex, "host_callback_id": callbackID}, &current); err != nil {
+			return err
+		}
+		var record object
+		if json.Unmarshal(current.JSON, &record) != nil || record["type"] != provider {
+			return errors.New("plugin auth file is not a Doubao Work credential")
+		}
+		record["models_refreshed_at"] = time.Now().UTC().Format(time.RFC3339)
+		data, _ := json.Marshal(record)
+		name := current.Name
+		if name == "" {
+			name = file.Name
+		}
+		return hostCall("host.auth.save", object{"name": filepath.Base(name), "json": json.RawMessage(data), "host_callback_id": callbackID}, nil)
+	}
+	return errors.New("no Doubao Work credential is registered in CPA")
+}
+
+func consoleCleanupSummary() managementResponse {
+	s, err := consoleService()
+	if err != nil {
+		return managementError(409, "the plugin has not loaded its account yet; open the status first")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	result := object{"conversations": s.Conversations()}
+	if connectors, err := s.Connectors(ctx); err == nil {
+		result["connectors"] = connectors
+	} else {
+		result["connectors_error"] = err.Error()
+	}
+	if files, err := s.Files(); err == nil {
+		result["files"] = files
+	} else {
+		result["files_error"] = err.Error()
+	}
+	return managementJSON(200, result)
+}
+
+func consoleCleanup(run func(context.Context, *doubao.Service) (object, error)) managementResponse {
+	s, err := consoleService()
+	if err != nil {
+		return managementError(409, "the plugin has not loaded its account yet; open the status first")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	result, err := run(ctx, s)
+	if err != nil {
+		if result == nil {
+			result = object{}
+		}
+		result["error"] = err.Error()
+		return managementJSON(errorStatus(err), result)
 	}
 	return managementJSON(200, result)
 }

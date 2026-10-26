@@ -1,6 +1,9 @@
 package doubao
 
 import (
+	"context"
+	"errors"
+	"sort"
 	"strings"
 	"time"
 )
@@ -142,4 +145,76 @@ func (s *Service) CancelTask(id string) bool {
 	}
 	g.supersedeLocked(t, apiFail(409, "task_cancelled", "The task was cancelled from the plugin page; resend the conversation to start a new task"))
 	return true
+}
+
+func publicCatalog(aliases []Model) []PublicModel {
+	public := []PublicModel{}
+	for _, m := range aliases {
+		public = append(public, PublicModel{ID: m.Name, DisplayName: m.Display, Window: m.Window, Efforts: m.Efforts})
+	}
+	return public
+}
+
+// catalog is the Work model list, which the plugin page can refresh.
+func (g *gateway) catalog() []Model {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.models
+}
+
+// PublicModels lists the routable models.
+func (s *Service) PublicModels() []PublicModel {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]PublicModel(nil), s.models...)
+}
+
+// ModelsRefreshed is when the model list was last loaded from Work.
+func (s *Service) ModelsRefreshed() time.Time {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.refreshed
+}
+
+// RefreshModels reloads the Work model list. Running tasks keep the model
+// they selected; new requests see the new list.
+func (s *Service) RefreshModels(ctx context.Context) (added, removed []string, err error) {
+	models, err := s.c.models(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	aliases := publicModels(models)
+	if len(aliases) == 0 {
+		return nil, nil, errors.New("no available Work models")
+	}
+	public := publicCatalog(aliases)
+	s.mu.Lock()
+	before := map[string]bool{}
+	for _, m := range s.models {
+		before[m.ID] = true
+	}
+	s.models, s.refreshed = public, time.Now()
+	s.mu.Unlock()
+	s.g.mu.Lock()
+	s.g.models = aliases
+	s.g.mu.Unlock()
+	for _, m := range public {
+		if !before[m.ID] {
+			added = append(added, m.ID)
+		}
+		delete(before, m.ID)
+	}
+	for id := range before {
+		removed = append(removed, id)
+	}
+	sort.Strings(removed)
+	return added, removed, nil
+}
+
+// SetNativeTools changes native routing for tasks started from now on; a
+// running task keeps the policy it was saved with.
+func (s *Service) SetNativeTools(enabled bool) {
+	s.g.mu.Lock()
+	s.g.nativeTools = enabled
+	s.g.mu.Unlock()
 }

@@ -54,8 +54,10 @@ td.state { white-space: normal; min-width: 120px; }
 .list { margin: 6px 0 0; padding: 0; list-style: none; font-size: 13px; }
 .list li { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dashed var(--line); }
 #gate { max-width: 420px; margin: 60px auto; }
+.cleanup { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 10px; }
+.small { font-size: 12px; margin-top: 6px; }
 [hidden] { display: none !important; }
-@media (max-width: 760px) { .grid { grid-template-columns: minmax(0, 1fr); } .opt { display: none; } }
+@media (max-width: 760px) { .grid, .cleanup { grid-template-columns: minmax(0, 1fr); } .opt { display: none; } }
 </style>
 </head>
 <body>
@@ -110,6 +112,8 @@ td.state { white-space: normal; min-width: 120px; }
         </div>
         <ul class="list" id="failures"></ul>
         <div class="muted" style="margin-top:8px" id="nativeTools"></div>
+        <div class="row" style="margin-top:8px"><span class="muted" id="modelsInfo"></span><button id="refreshModels">刷新模型列表</button></div>
+        <div class="muted" id="modelsResult"></div>
       </section>
 
       <section class="card wide">
@@ -121,6 +125,35 @@ td.state { white-space: normal; min-width: 120px; }
           </table>
         </div>
         <div id="noTasks" class="muted" style="padding:10px 0" hidden>目前没有任务。</div>
+      </section>
+
+      <section class="card wide">
+        <div class="row" style="justify-content:space-between"><h2 style="margin:0">清理</h2><button id="cleanupCheck">重新检查</button></div>
+        <div id="cleanupHint" class="muted" style="margin-top:8px"></div>
+        <div class="cleanup">
+          <div>
+            <b>对话</b>
+            <div class="muted" id="convInfo">–</div>
+            <div class="row" style="margin-top:8px">
+              <select id="convDays" style="width:auto"><option value="0">全部</option><option value="1">1 天前</option><option value="3">3 天前</option><option value="7" selected>7 天前</option><option value="30">30 天前</option></select>
+              <button id="convDelete" class="danger">删除</button>
+            </div>
+            <div class="muted small">只删插件 0.3.23 起自己新建并记下的对话。更早的对话和你自己的对话在豆包里看起来完全一样，不会动。</div>
+          </div>
+          <div>
+            <b>连接器</b>
+            <div class="muted" id="connInfo">–</div>
+            <div class="row" style="margin-top:8px"><button id="connClean" class="danger">清理闲置</button></div>
+            <div class="muted small">按插件固定的连接器名前缀识别；有任务在运行时不能清理。</div>
+          </div>
+          <div>
+            <b>上传的文件</b>
+            <div class="muted" id="fileInfo">–</div>
+            <div class="row" style="margin-top:8px"><button id="fileDelete" class="danger">全部删除</button></div>
+            <div class="muted small">通过插件文件接口上传的文件，7 天后自动过期；删除后对应的文件 ID 失效。</div>
+          </div>
+        </div>
+        <div id="cleanupResult" style="margin-top:10px"></div>
       </section>
 
       <section class="card wide">
@@ -232,7 +265,8 @@ td.state { white-space: normal; min-width: 120px; }
         li.append(name, value); list.appendChild(li);
       });
     }
-    $('nativeTools').textContent = '原生工具转发：' + (s.native_tools ? '开启' : '关闭') + (s.service_open ? '' : ' · 服务尚未加载');
+    $('nativeTools').textContent = '原生工具转发：' + (s.native_tools ? '开启' : '关闭') + (s.service_open ? '' : ' · 服务尚未加载') + (s.settings_pending ? ' · 新配置将在没有任务运行时生效' : '');
+    $('modelsInfo').textContent = '模型 ' + (s.models || []).length + ' 个' + (s.models_refreshed_at ? ' · ' + since(s.models_refreshed_at) + '加载' : '');
 
     const select = $('model');
     const models = s.models || [];
@@ -284,9 +318,64 @@ td.state { white-space: normal; min-width: 120px; }
     }
   }
 
+  let cleanup = null;
+  function mb(bytes) { return (bytes / 1048576).toFixed(1) + ' MB'; }
+  function showResult(text, bad) { const r = $('cleanupResult'); r.textContent = text; r.className = bad ? 'error' : 'muted'; }
+  function renderCleanup() {
+    const c = cleanup;
+    if (!c) return;
+    const conv = c.conversations || {};
+    const days = $('convDays').value;
+    const target = (conv.older_than_days || {})[days] || 0;
+    $('convInfo').textContent = '已记录 ' + (conv.total || 0) + ' 条，其中 ' + (conv.in_use || 0) + ' 条正在使用（不会删）；所选条件将删除 ' + target + ' 条';
+    $('convDelete').disabled = target === 0;
+    $('convDelete').dataset.count = target;
+    const conn = c.connectors;
+    $('connInfo').textContent = conn ? '共 ' + conn.total + ' 个：使用中 ' + conn.in_use + '、缓存 ' + conn.cached + '、残留 ' + conn.leftover : ('读取失败：' + (c.connectors_error || ''));
+    $('connClean').disabled = !conn || conn.cached + conn.leftover === 0;
+    const files = c.files;
+    $('fileInfo').textContent = files ? files.count + ' 个，' + mb(files.bytes) : ('读取失败：' + (c.files_error || ''));
+    $('fileDelete').disabled = !files || files.count === 0;
+  }
+  async function loadCleanup() {
+    $('cleanupHint').textContent = '检查中…';
+    try { cleanup = await call('/cleanup'); $('cleanupHint').textContent = ''; renderCleanup(); }
+    catch (e) { if (e.message !== 'unauthorized') $('cleanupHint').textContent = e.message.indexOf('not loaded') >= 0 ? '插件还没加载账号，稍后再检查。' : '检查失败：' + e.message; }
+  }
+  async function runCleanup(button, path, body, question, done) {
+    if (!confirm(question)) return;
+    button.disabled = true; showResult('执行中…');
+    try { const r = await call(path, { method: 'POST', body }); showResult(done(r)); }
+    catch (e) { showResult('失败：' + e.message, true); }
+    loadCleanup();
+  }
+  $('convDays').onchange = renderCleanup;
+  $('cleanupCheck').onclick = loadCleanup;
+  $('convDelete').onclick = () => runCleanup($('convDelete'), '/cleanup/conversations', { days: Number($('convDays').value) },
+    '从你的豆包账号里删除 ' + $('convDelete').dataset.count + ' 条插件建的对话？删除后在豆包里也找不回。', (r) => '已删除 ' + r.deleted + ' 条对话' + (r.remaining ? '，还剩 ' + r.remaining + ' 条未删' : '') + '。');
+  $('connClean').onclick = () => runCleanup($('connClean'), '/cleanup/connectors', {},
+    '断开所有闲置的插件连接器？正在使用的不受影响，之后需要时插件会重新创建。', (r) => '已断开 ' + r.removed + ' 个残留连接器，闲置缓存已回收。');
+  $('fileDelete').onclick = () => runCleanup($('fileDelete'), '/cleanup/files', {},
+    '删除所有通过插件上传的文件？对应的文件 ID 会失效。', (r) => '已删除 ' + r.deleted + ' 个文件。');
+  $('refreshModels').onclick = async () => {
+    $('refreshModels').disabled = true; $('modelsResult').textContent = '刷新中…';
+    try {
+      const r = await call('/models/refresh', { method: 'POST', body: {} });
+      const parts = ['共 ' + r.total + ' 个模型'];
+      if (r.added && r.added.length) parts.push('新增 ' + r.added.join('、'));
+      if (r.removed && r.removed.length) parts.push('下线 ' + r.removed.join('、'));
+      if (!(r.added && r.added.length) && !(r.removed && r.removed.length)) parts.push('没有变化');
+      parts.push(r.cpa_notified ? 'CPA 已重新登记' : '未能通知 CPA（' + (r.cpa_error || '') + '），重载插件后生效');
+      $('modelsResult').textContent = parts.join('；');
+    } catch (e) { $('modelsResult').textContent = '刷新失败：' + e.message; }
+    $('refreshModels').disabled = false;
+    refresh();
+  };
+
   function start() {
     $('gate').hidden = true; $('app').hidden = false;
     refresh();
+    setTimeout(loadCleanup, 1500);
     clearInterval(timer);
     timer = setInterval(refresh, 4000);
   }

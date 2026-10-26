@@ -169,7 +169,8 @@ type Client struct {
 	deferToNewer bool
 	saved        os.FileInfo
 	// resumes counts accepted runs whose dropped stream was resumed.
-	resumes atomic.Int64
+	resumes  atomic.Int64
+	ledgerMu sync.Mutex
 }
 
 func newClient(dir string) (*Client, error) {

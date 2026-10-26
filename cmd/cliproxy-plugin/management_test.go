@@ -102,3 +102,31 @@ func TestManagementRoutesWithoutOpenService(t *testing.T) {
 		t.Fatal("unknown login flow", r.StatusCode, string(r.Body))
 	}
 }
+
+func TestConfigChangesApplyLiveOrWhenIdle(t *testing.T) {
+	base := config{StateDir: "/state", HelperPath: "/helper"}
+	native := base
+	native.NativeTools = true
+	if got, pending := nextConfig(base, true, native); got != native || pending != nil {
+		t.Fatal("native_tools did not apply to a running service", got, pending)
+	}
+	moved := base
+	moved.StateDir = "/other"
+	if got, pending := nextConfig(base, true, moved); got != base || pending == nil || *pending != moved {
+		t.Fatal("a new state_dir must wait until no task runs", got, pending)
+	}
+	if got, pending := nextConfig(base, false, moved); got != moved || pending != nil {
+		t.Fatal("a closed service takes any configuration", got, pending)
+	}
+}
+
+func TestCleanupRoutesNeedLoadedAccount(t *testing.T) {
+	for _, route := range []struct{ method, path, body string }{{"GET", "/cleanup", ""}, {"POST", "/cleanup/conversations", `{"days":7}`}, {"POST", "/cleanup/connectors", `{}`}, {"POST", "/cleanup/files", `{}`}} {
+		if r := callManagement(t, route.method, managementBase+route.path, nil, route.body); r.StatusCode != 409 {
+			t.Fatal(route.path, "without a loaded account", r.StatusCode, string(r.Body))
+		}
+	}
+	if r := callManagement(t, "POST", managementBase+"/cleanup/conversations", nil, `{"days":-1}`); r.StatusCode != 400 {
+		t.Fatal("negative age accepted", r.StatusCode)
+	}
+}

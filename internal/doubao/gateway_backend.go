@@ -504,7 +504,7 @@ func (g *gateway) runNative(t *gatewayTurn) {
 	req := t.request
 	g.mu.Unlock()
 	// The catalog lists models for Work; chat mode takes the same ones.
-	model, _, err := selectModel(g.models, req.Model, "work")
+	model, _, err := selectModel(g.catalog(), req.Model, "work")
 	var receipt *Receipt
 	if err == nil && !usesTools(req) {
 		receipt, err = g.runPlain(t, req, model)

@@ -21,7 +21,7 @@ func (g *gateway) toolReply(ctx context.Context, t *gatewayTurn, native object, 
 	g.mu.Lock()
 	req := t.request
 	g.mu.Unlock()
-	model, _, _ := selectModel(g.models, req.Model, "work")
+	model, _, _ := selectModel(g.catalog(), req.Model, "work")
 	// The auxiliary reader sees text context, never inline base64 as prompt text.
 	contextMessages := []apiMessage{}
 	for _, m := range req.Messages {

@@ -37,6 +37,8 @@ var runtime struct {
 	cancel  context.CancelFunc
 	streams sync.WaitGroup
 	login   *loginFlow
+	// pending is a new state_dir or helper_path, applied once no task runs.
+	pending *config
 }
 
 func failure(code, message string, status int) []byte {
@@ -149,6 +151,16 @@ func executorPayload(req request) ([]byte, error) {
 	return json.Marshal(fields)
 }
 
+// nextConfig applies a new plugin configuration. A running service takes
+// native_tools at once, for tasks started from then on; a new state_dir or
+// helper_path stays pending until no task runs.
+func nextConfig(current config, open bool, next config) (config, *config) {
+	if !open || current.StateDir == next.StateDir && current.HelperPath == next.HelperPath {
+		return next, nil
+	}
+	return current, &next
+}
+
 func openService() (*doubao.Service, error) {
 	runtime.Lock()
 	defer runtime.Unlock()
@@ -156,13 +168,16 @@ func openService() (*doubao.Service, error) {
 		return nil, errors.New("plugin is shutting down")
 	}
 	if s := runtime.service; s != nil {
-		// Helper login replaced the saved session: reopen once idle so the
-		// newer login is used instead of stale in-memory cookies.
-		if !s.SessionReplaced() || s.HasActiveTasks() {
+		// Helper login replaced the saved session, or the configuration moved
+		// the state or helper: reopen once idle.
+		if !s.SessionReplaced() && runtime.pending == nil || s.HasActiveTasks() {
 			return s, nil
 		}
 		s.Close()
 		runtime.service = nil
+	}
+	if runtime.pending != nil {
+		runtime.config, runtime.pending = *runtime.pending, nil
 	}
 	if runtime.login != nil {
 		select {
@@ -258,13 +273,10 @@ func dispatch(method string, raw []byte) (any, error) {
 			return nil, errors.New("configure absolute state_dir and helper_path")
 		}
 		runtime.Lock()
-		changed := runtime.service != nil && runtime.config != cfg
-		runtime.Unlock()
-		if changed {
-			return nil, errors.New("stop active plugin before changing plugin configuration")
+		runtime.config, runtime.pending = nextConfig(runtime.config, runtime.service != nil, cfg)
+		if s := runtime.service; s != nil && runtime.pending == nil {
+			s.SetNativeTools(runtime.config.NativeTools)
 		}
-		runtime.Lock()
-		runtime.config = cfg
 		if runtime.ctx == nil || runtime.closed {
 			runtime.ctx, runtime.cancel = context.WithCancel(context.Background())
 		}
@@ -310,7 +322,7 @@ func dispatch(method string, raw []byte) (any, error) {
 			return nil, err
 		}
 		models := []any{}
-		for _, m := range s.Models {
+		for _, m := range s.PublicModels() {
 			models = append(models, modelInfo(m))
 		}
 		return object{"Provider": provider, "Models": models}, nil

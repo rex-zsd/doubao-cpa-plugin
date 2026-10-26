@@ -508,6 +508,7 @@ type gateway struct {
 	// ended, as metadata only.
 	lastRequest time.Time
 	outcomes    []taskOutcome
+	taskStarts  int
 }
 
 func newGateway(ctx context.Context, c *Client, models []Model, dir string, timeout time.Duration) *gateway {
@@ -978,6 +979,7 @@ func apiFingerprint(req apiRequest) string {
 // tool results no live task can take; identical retries of it share one task
 // even without an Idempotency-Key.
 func (g *gateway) startLocked(req apiRequest, key string, transcript bool) (*apiExchange, *apiError) {
+	g.taskStarts++
 	fingerprint := apiFingerprint(req)
 	if key != "" {
 		if prior, ok := g.idempotency[apiHash(key)]; ok {
@@ -1350,7 +1352,7 @@ func (g *gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.URL.Path == "/v1/models" && r.Method == "GET" {
 		items := []any{}
-		for _, m := range g.models {
+		for _, m := range g.catalog() {
 			if m.Available && contains(m.Modes, "work") {
 				items = append(items, object{"id": m.Name, "object": "model", "created": 0, "owned_by": "doubao-work"})
 			}
@@ -1368,7 +1370,7 @@ func (g *gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, failure)
 		return
 	}
-	if _, _, err := selectModel(g.models, req.Model, "work"); err != nil {
+	if _, _, err := selectModel(g.catalog(), req.Model, "work"); err != nil {
 		writeAPIError(w, apiFail(400, "model_not_found", "Select a model listed by /v1/models"))
 		return
 	}
