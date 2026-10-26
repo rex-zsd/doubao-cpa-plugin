@@ -6,7 +6,7 @@
 
 豆包 Work 实际运行的是 agent，插件把它的对话和真实连接器调用转换成 LLM API。系统消息优先级、温度、token 预算等底层模型语义无法因此获得，见下文的参数表。
 
-当前版本为 0.3.23，已在官方 CPA v8.0.13 上实测，见[插件页面第二版：清理、刷新模型与配置热生效](docs/PAGE_V2_0323_CN.md)。
+当前版本为 0.3.24，已在官方 CPA v8.0.13 上实测，见[原生工具提示词精简](docs/NATIVE_PROMPT_0324_CN.md)。
 
 支持 CPA 的 OAuth 模型别名，可让现有 Claude 客户端用兼容模型名调用豆包 Work，配置和执行语义见 [模型别名说明](docs/MODEL_ALIASES_CN.md)。
 
@@ -25,7 +25,7 @@ cd doubao-cpa-plugin
 把这两个文件放进 CPA 的插件目录。`.so` 的文件名要带版本号：CPA 按 `<id>-v<版本>.so` 识别插件，同一插件有多个版本时加载最高的那个。
 
 ```text
-plugins/linux/amd64/doubao-work-v0.3.23.so
+plugins/linux/amd64/doubao-work-v0.3.24.so
 plugins/doubao-work/bin/doubao-helper
 ```
 
@@ -123,6 +123,8 @@ Codex 的 Responses Lite 请求可以直接使用，包括 `additional_tools`、
 0.3.20 的连接器注册、可用性检查和回收在全局缓存锁外执行，不同工具目录可以独立前进；同目录操作协调等待，等待方可取消。缓存租约、创建/断开前的持久化意图、容量上限和重启恢复保持不变。
 
 0.3.21 把原生转发扩展到 NotebookEdit、Glob、Grep、TaskOutput、TaskStop 和后台 Bash。不支持或客户端未声明的工具仍按原方式提示改走 MCP，回复格式不变。
+
+0.3.24 起，提示词不再重复这些工具的完整说明和参数结构：豆包自带的同名工具参数相同，提示词只列出调用方声明的工具、原生路径会转发的参数名，以及与平台不同的规则。以 32 个工具的 Claude Code 目录计，每个新任务的提示词少约 8,000 字。连接器里仍保留完整定义；每个原生调用仍按调用方的 schema 校验，不兼容的退回 MCP。
 
 Work 不把连接器工具直接列给模型：模型要先用 Work 自带的 `tool_search` 搜索，搜到后再按 Work 的方式调用。连接器工具在 Work 里的名字形如 `mcp__independent_http_tools_<编号>__get_weather`（函数名转成小写，`-` 换成 `_`）。`tool_search` 每次只返回 3 个工具。2026-10-16 实测：用完整名字搜索时，连接器工具排在第一；只写 `Read`、`Bash` 这样的函数名时，它排在同名的 Work 自带工具之后；一次搜几个函数（如 `Read Bash`）、写法与 Work 的名字不同（如 `read-File`）或用“读取文件内容”这类描述来搜时，3 个结果全是 Work 自带的工具，模型找不到客户端函数，就直接回答了。0.3.5 及更早的提示词只给出连接器名，13–20 个函数时 7 次里有 2 次这样失败；0.3.6 加上函数名后，Claude Code 3 次里仍有 2 次失败；0.3.7 起提示词列出每个函数的完整名字，并要求每次只按一个完整名字搜索（结果见[验收记录](docs/VALIDATION_CN.md)）。需要确保调用客户端函数时，可以再把 `tool_choice` 设为 `required` 或指定函数（同样是提示词要求，见上表）。
 

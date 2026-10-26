@@ -4,7 +4,7 @@
 
 This plugin turns Doubao Work into a model provider for CLIProxyAPI (CPA). OpenAI Chat Completions and Responses clients call it directly, and Claude and Gemini clients work through CPA's translation. Client functions reach Work through a real MCP connector.
 
-It is an independent Go protocol implementation that CPA loads as a `.so` through its C ABI. It neither needs nor runs doubao-cli and starts no extra gateway process. Only Linux amd64 and a single account are supported. Version 0.3.23 is tested on the official CPA v8.0.13; see the [plugin page v2 report](docs/PAGE_V2_0323_CN.md).
+It is an independent Go protocol implementation that CPA loads as a `.so` through its C ABI. It neither needs nor runs doubao-cli and starts no extra gateway process. Only Linux amd64 and a single account are supported. Version 0.3.24 is tested on the official CPA v8.0.13; see the [native tool prompt report](docs/NATIVE_PROMPT_0324_CN.md).
 
 CPA OAuth model aliases work with native Chat Completions and Responses requests as well as translated clients. See the [model alias notes](docs/MODEL_ALIASES_CN.md) for a Claude client compatibility example.
 
@@ -23,7 +23,7 @@ cd doubao-cpa-plugin
 The build runs the race tests first and produces `doubao-work.so` and a static `doubao-helper`. Put both into CPA's plugin directory. The `.so` name must carry its version, because CPA loads the highest `<id>-v<version>.so` of each plugin:
 
 ```text
-plugins/linux/amd64/doubao-work-v0.3.23.so
+plugins/linux/amd64/doubao-work-v0.3.24.so
 plugins/doubao-work/bin/doubao-helper
 ```
 
@@ -89,6 +89,8 @@ Version 0.3.18 adds persistent connector leases in the CPA plugin, keyed by acco
 Version 0.3.19 adds opt-in `native_tools: true`. Compatible single calls and dependency chains can use Work's native channel without MCP discovery: explicitly declared, same-name `Read` for absolute `.txt` paths (optional one-based offset and limit), and foreground `Bash` with the original command and millisecond timeout. The HTTP client still executes every call and returns its actual result. Arguments must pass the original client schema. Only observed native display/sandbox defaults are removed; native IDs and original inputs are retained for replies. Media, other file types, background/elevated commands and all other tools retain MCP. Complete tools, descriptions, schemas and history remain available; independent calls prefer existing MCP batches when parallelism is allowed. If the added native instructions exceed the context limit, the task uses the complete MCP prompt when it fits. Pending calls restore their persisted routing policy even after configuration changes. The flag defaults to false; apply changes through a plugin version reload or a clean stop/reload. This reduces routing overhead for compatible calls while Work remains an Agent; it does not guarantee a fixed end-to-end speedup.
 
 Version 0.3.20 moves registration, availability checks and retirement outside the global connector-pool lock. Operations for the same catalog coordinate with cancellable waits; different catalogs can progress independently. Durable leases, creation/disconnect intents, capacity limits and recovery remain in place. Native forwarding also accepts known code/text Read paths (including `.go`, `.py`, `.js`, `.ts`, `.md` and `.json`) and same-name text Write/Edit. The client retains execution and approval; original arguments, actual results and errors survive HTTP replay and recovery. Unknown Read formats and incompatible arguments retain MCP. These changes target routing overhead and contention, with the same model, effort, full history and tool definitions.
+
+Version 0.3.24 stops repeating the full description and schema of each native-compatible tool in every prompt. Work's own tools take the same names and arguments, so the prompt lists the declared tools with the parameters the native route forwards and states only where the platform differs, about 8,000 characters less per new task with a 32-tool Claude Code catalog. The connector keeps the complete definitions, and every native call is still validated against the caller's schema, falling back to MCP when it does not fit.
 
 Version 0.3.23 extends the plugin page. It refreshes the model list and makes CPA register it again without a plugin reload. It cleans up what the plugin leaves in the account: conversations the plugin recorded itself from 0.3.23 on (Work lists plugin conversations exactly like the user's own, so older ones are left alone; conversations a task or a continuable thread uses are kept), idle plugin connectors recognized by their name prefix (only while no task runs; never the user's own), and files uploaded through the plugin's file API. Plugin configuration edited in CPA's panel now applies without a failed reconfigure: `native_tools` at once for new tasks, `state_dir` and `helper_path` once no task runs.
 
