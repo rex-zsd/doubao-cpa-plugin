@@ -2,6 +2,7 @@ package doubao
 
 import (
 	"path"
+	"sort"
 	"strings"
 	"time"
 )
@@ -210,16 +211,49 @@ func nativeEscalation(call object) bool {
 }
 
 func nativeClientInstructions(req apiRequest, connector string) string {
-	docs := []string{}
+	tools := []string{}
 	for _, tool := range req.Tools {
 		if nativeCompatibleTool(tool) && nativeToolChoice(req, tool.Function.Name) {
-			docs = append(docs, tool.Function.Name+"\n"+tool.Function.Description+"\n"+plainJSON(tool.Function.Parameters))
+			tools = append(tools, tool.Function.Name+"("+nativeParameters(tool)+")")
 		}
 	}
-	if len(docs) == 0 {
+	if len(tools) == 0 {
 		return ""
 	}
-	return "\n\n原生工具转发：下面明确列出的同名工具在满足兼容条件且属于单次调用或依赖链时，优先直接使用平台同名原生工具，无需 tool_search；多个独立调用必须优先使用上面的 MCP 并行批入口（如果本轮允许并行），不要为使用原生工具而把独立调用逐个串行执行；适配器会把结构化调用转交给 HTTP 调用方，在调用方环境中真实执行，然后回传实际结果。不是在平台机器上执行。参数必须严格符合下面调用方的完整说明与 schema，不得改变路径、内容、命令、模式或执行参数，也不要加入 schema 之外的平台参数。兼容范围：绝对路径的已知文本 Read（包括 .txt/.go/.py/.js/.ts/.md/.json/.yaml/.sh 等代码/文本文件及 Dockerfile、Makefile、.gitignore 等文本名；file_path、可选 offset/limit，offset 从 1 开始）；文本 Write（file_path、content）；Edit（file_path、非空 old_string、new_string、可选 replace_all）；NotebookEdit（绝对 notebook_path，其余参数按调用方 schema）；Glob、Grep（非空 pattern，path 省略或为绝对路径，不加排序、数量上限、目录或符号链接等平台参数，Grep 的 include 不会改写为 glob）；Bash（command、可选 description/timeout/run_in_background，timeout 单位毫秒；仅当调用方 schema 声明 run_in_background 时可后台运行）；TaskOutput、TaskStop（只用于调用方工具结果中返回的任务 ID，字段名按调用方 schema）。下文未列出 TaskOutput 时，按调用方 Bash 说明或其结果中给出的方式获取后台输出，不要调用未列出的工具。Write/Edit/NotebookEdit 的路径必须为绝对路径；执行前仍须遵守调用方完整说明中的读取、审批和修改约束，不得绕过客户端拒绝或重复执行失败的修改。平台 Read 默认 thumbnail_size=full 对文本无效，转发时仅移除此显示字段；Bash 默认 sandbox_permissions=use_default 不覆盖客户端权限策略，仅移除此默认字段。除此之外不丢弃任何字段。PDF/媒体、未知 Read 文件类型、提权（dangerouslyDisableSandbox 或 require_escalated）及其他不兼容参数仍使用 MCP 连接器。其他函数始终使用上面的 MCP 完整名。依赖调用必须等待真实结果，不能猜测或模拟输出。\n" + strings.Join(docs, "\n\n") + "\n可回退的 MCP 连接器：" + connector
+	// Work's own tools carry the same names and arguments as these, so the
+	// prompt names the caller's tools and parameters and states only where
+	// they differ; every call is still checked against the caller's schema
+	// and falls back to MCP when it does not fit.
+	return "\n\n原生工具转发：调用方声明了与平台自带工具同名的 " + strings.Join(tools, "、") + "（括号内为调用方的参数名，* 为必填）。单次调用或依赖链中直接使用平台同名工具，无需 tool_search；多个独立调用必须优先使用上面的 MCP 并行批入口（如果本轮允许并行），不要为使用原生工具而把独立调用逐个串行执行。这些调用会转交 HTTP 调用方在它自己的环境中真实执行并回传实际结果，不在平台机器上执行；调用方的审批和修改约束同样有效，不得绕过拒绝或重复执行失败的修改。只使用括号里的参数，含义与平台同名工具相同，不要加入平台独有参数。路径一律为绝对路径；Read 只用于文本和代码文件，offset 从 1 开始；Bash 的 timeout 单位为毫秒，只有括号里有 run_in_background 时才能后台运行；Glob 不加排序、数量上限、目录或符号链接选项；Grep 不用 include，按括号里的参数名传；TaskOutput、TaskStop 只用于调用方结果中返回的任务 ID，括号里没有 TaskOutput 时按调用方 Bash 结果给出的方式获取后台输出；不得使用沙箱逃逸或提权参数。PDF、图片等媒体和其他不兼容的调用，改用 MCP 连接器里的同名函数。其他函数始终使用上面的 MCP 完整名。依赖调用必须等待真实结果，不能猜测或模拟输出。\n可回退的 MCP 连接器：" + connector
+}
+
+// nativeParameters lists the declared parameters the native route forwards,
+// required ones first and marked with *, so calls use the caller's names.
+func nativeParameters(tool apiTool) string {
+	properties, _ := field(tool.Function.Parameters, "properties").(map[string]any)
+	required := map[string]bool{}
+	for _, key := range array(parsed(jsonText(tool.Function.Parameters["required"]))) {
+		required[textValue(key)] = true
+	}
+	names := []string{}
+	for key := range properties {
+		// Only arguments the native route forwards; sandbox escape never is.
+		if nativeArgumentKey(tool.Function.Name, key) && key != "dangerouslyDisableSandbox" {
+			names = append(names, key)
+		}
+	}
+	sort.Slice(names, func(i, j int) bool {
+		if required[names[i]] != required[names[j]] {
+			return required[names[i]]
+		}
+		return names[i] < names[j]
+	})
+	for i, key := range names {
+		if required[key] {
+			names[i] += "*"
+		}
+	}
+	return strings.Join(names, ", ")
 }
 
 func nativeToolChoice(req apiRequest, name string) bool {

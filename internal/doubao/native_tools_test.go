@@ -231,7 +231,7 @@ func TestNativeSearchNotebookTaskAndBackgroundCallsArePreserved(t *testing.T) {
 	req.Tools = nativeFixtureTools("Read", "Bash", "NotebookEdit", "TaskStop")
 	docs := nativeClientInstructions(req, "c")
 	for name, args := range map[string]object{"Glob": {"pattern": "*.go"}, "Grep": {"pattern": "x"}, "TaskOutput": {"task_id": "bg-1"}} {
-		if _, _, ok := nativeClientCall(req, object{"id": "native", "name": name}, args); ok || strings.Contains(docs, name+"\nKeep this complete caller contract.") {
+		if _, _, ok := nativeClientCall(req, object{"id": "native", "name": name}, args); ok || strings.Contains(docs, " "+name+"(") || strings.Contains(docs, "、"+name+"(") {
 			t.Fatal("undeclared native tool offered or forwarded", name)
 		}
 		g, _ := testGateway(t)
@@ -242,9 +242,12 @@ func TestNativeSearchNotebookTaskAndBackgroundCallsArePreserved(t *testing.T) {
 		}
 	}
 	for _, name := range []string{"Read", "Bash", "NotebookEdit", "TaskStop"} {
-		if !strings.Contains(docs, name+"\nKeep this complete caller contract.") {
+		if !strings.Contains(docs, name+"(") {
 			t.Fatal("declared native tool missing from the prompt", name)
 		}
+	}
+	if strings.Contains(docs, "Keep this complete caller contract.") {
+		t.Fatal("full caller descriptions are back in the prompt")
 	}
 }
 
@@ -327,8 +330,10 @@ func TestNativeRoutingPromptRetainsOriginalCatalogAndDefault(t *testing.T) {
 	if !strings.Contains(base, "不要改用你所在平台自带的 Bash") || strings.Contains(base, "原生工具转发：") {
 		t.Fatal("default routing changed")
 	}
-	if !strings.Contains(probe, "原生工具转发：") || !strings.Contains(probe, req.Tools[1].Function.Description) || !strings.Contains(probe, plainJSON(req.Tools[1].Function.Parameters)) || !strings.Contains(probe, "__client_nonce") || len(toolCatalog(req)) != 3 {
-		t.Fatal("native experiment lost original tools, descriptions or schema")
+	// The platform's own tools already describe Read and Bash; the prompt names
+	// the caller's parameters only, while the connector keeps every definition.
+	if !strings.Contains(probe, "原生工具转发：") || !strings.Contains(probe, "Read(file_path*") || strings.Contains(probe, req.Tools[1].Function.Description) || strings.Contains(probe, plainJSON(req.Tools[1].Function.Parameters)) || !strings.Contains(probe, "__client_nonce") || len(toolCatalog(req)) != 3 {
+		t.Fatal("native routing prompt is not the compact form, or the catalog changed")
 	}
 }
 
@@ -345,7 +350,7 @@ func TestNativeRoutingKeepsBatchPriorityAndForcedToolChoice(t *testing.T) {
 	if _, _, ok := nativeClientCall(req, object{"id": "n", "name": "Read"}, object{"file_path": "/fixture.txt"}); ok {
 		t.Fatal("native Read bypassed forced Bash")
 	}
-	if strings.Contains(nativeClientInstructions(req, "c"), "Read\nKeep this complete caller contract.") {
+	if strings.Contains(nativeClientInstructions(req, "c"), "Read(") {
 		t.Fatal("prompt offered a native tool excluded by tool_choice")
 	}
 }
@@ -460,5 +465,12 @@ func testNativeRoutingRecovery(t *testing.T, name string) {
 	turn.cancel()
 	if x.err != nil || x.message.Content != "recovered actual failure" || uploads.Load() != 1 || generations.Load() != 0 {
 		t.Fatal("recovery duplicated or lost native execution", x.err)
+	}
+}
+
+func TestNativeParametersListCallerNamesRequiredFirst(t *testing.T) {
+	tool := apiTool{Function: apiFunction{Name: "Bash", Parameters: object{"type": "object", "properties": object{"timeout": object{"type": "number"}, "command": object{"type": "string"}, "run_in_background": object{"type": "boolean"}, "description": object{"type": "string"}, "dangerouslyDisableSandbox": object{"type": "boolean"}, "client_only": object{"type": "string"}}, "required": []string{"command"}}}}
+	if got := nativeParameters(tool); got != "command*, description, run_in_background, timeout" {
+		t.Fatal(got)
 	}
 }
