@@ -19,7 +19,7 @@ import (
 const provider = "doubao-work"
 
 // pluginVersion is reported to CPA and shown on the plugin page.
-const pluginVersion = "0.3.24"
+const pluginVersion = "0.3.25"
 
 type object = map[string]any
 type config struct {
@@ -279,6 +279,7 @@ func dispatch(method string, raw []byte) (any, error) {
 		}
 		if runtime.ctx == nil || runtime.closed {
 			runtime.ctx, runtime.cancel = context.WithCancel(context.Background())
+			go watchModels(runtime.ctx)
 		}
 		runtime.closed = false
 		runtime.Unlock()
