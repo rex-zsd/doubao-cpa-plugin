@@ -486,6 +486,7 @@ func (g *gateway) forwardClientTool(ctx context.Context, t *gatewayTurn, call, i
 		return nil, err
 	}
 	p.exposedAt = time.Now()
+	floorContextLocked(t, x)
 	g.mu.Unlock()
 	timing(t, "tool_call_ready", x.started)
 	x.resolve(message, "tool_calls", nil)
@@ -575,6 +576,7 @@ func (g *gateway) runNative(t *gatewayTurn) {
 	}
 	g.mu.Lock()
 	t.conversation = receipt.ConversationID
+	g.noteContextLocked(t, receipt.Context)
 	g.mu.Unlock()
 	g.finish(t, reply, nil)
 }
@@ -741,7 +743,7 @@ func (g *gateway) runWithTools(t *gatewayTurn, req apiRequest, model Model) (*Re
 	if conversation != "" && errors.As(runErr, &rejected) && receipt != nil && !receipt.Accepted && ctx.Err() == nil {
 		fmt.Fprintf(os.Stderr, "GATEWAY_THREAD_FALLBACK mode=tools code=%d\n", rejected.Code)
 		g.mu.Lock()
-		t.conversation = ""
+		t.conversation, t.context = "", 0
 		g.mu.Unlock()
 		if body, err = build(""); err != nil {
 			return receipt, err

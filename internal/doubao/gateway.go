@@ -373,7 +373,8 @@ type apiExchange struct {
 	model   string
 	created int64
 	started time.Time
-	// prompt is the estimated prompt size reported as usage; Work reports none.
+	// prompt is the prompt size reported as usage: Work's own figure once it
+	// reported one, else an estimate.
 	prompt  int
 	ready   chan struct{}
 	once    sync.Once
@@ -449,6 +450,9 @@ type gatewayTurn struct {
 	// sends only the messages after the first continued ones.
 	conversation, mode, workspace string
 	continued                     int
+	// context is the prompt size Work last reported for this conversation,
+	// in tokens; tool calls report at least this much.
+	context int
 	// open maps the signature of each native call received and not yet
 	// answered to its native ID. Work gives a client function about a minute,
 	// then sends the same call again under a new native ID; a twin arriving
@@ -469,6 +473,7 @@ const threadTTL, threadLimit = 12 * time.Hour, 128
 type gatewayThread struct {
 	nativeTools                            bool
 	conversation, mode, workspace, sandbox string
+	context                                int
 	used                                   time.Time
 	// header and keys are the thread's threadHeader and history prefix keys,
 	// kept to log where a request that almost matched diverged.
@@ -523,7 +528,7 @@ func (g *gateway) checkpointLocked(t *gatewayTurn) error {
 			pending = append(pending, object{"id": id, "call": p.call, "native_id": p.nativeID, "exchange": exchangeRecord(p.exposed), "next_exchange": exchangeRecord(p.next), "batch_calls": p.batchCalls, "expected_messages": p.expected, "submitted": p.submitted, "result": p.value, "result_is_error": p.isError})
 		}
 	}
-	return saveJSON(t.statePath, object{"version": 2, "native_tools": t.nativeTools, "finished_at": t.finished.Unix(), "deadline": t.deadline.Unix(), "error_status": errorStatus(t.err), "id": t.id, "initial_key": t.initialKey, "initial_hash": t.initialHash, "first_exchange": exchangeRecord(t.first), "current_exchange": exchangeRecord(t.current), "final_text": t.finalText, "request": t.request, "connector_id": t.connector, "connector_lease": t.connectorLease, "connector_label": t.connectorLabel, "sandbox_id": t.sandbox, "receipt_path": t.receiptPath, "generation_posts": t.generationPosts, "forwarded_tools": t.forwarded, "denied_tools": t.denied, "done": t.done, "cleanup_requested": t.cleanupRequested, "cleanup_confirmed": t.cleanupConfirmed, "pending": pending, "error": t.err, "conversation_id": t.conversation, "mode": t.mode, "workspace": t.workspace, "continued": t.continued})
+	return saveJSON(t.statePath, object{"version": 2, "native_tools": t.nativeTools, "finished_at": t.finished.Unix(), "deadline": t.deadline.Unix(), "error_status": errorStatus(t.err), "id": t.id, "initial_key": t.initialKey, "initial_hash": t.initialHash, "first_exchange": exchangeRecord(t.first), "current_exchange": exchangeRecord(t.current), "final_text": t.finalText, "request": t.request, "connector_id": t.connector, "connector_lease": t.connectorLease, "connector_label": t.connectorLabel, "sandbox_id": t.sandbox, "receipt_path": t.receiptPath, "generation_posts": t.generationPosts, "forwarded_tools": t.forwarded, "denied_tools": t.denied, "done": t.done, "cleanup_requested": t.cleanupRequested, "cleanup_confirmed": t.cleanupConfirmed, "pending": pending, "error": t.err, "conversation_id": t.conversation, "mode": t.mode, "workspace": t.workspace, "continued": t.continued, "context_tokens": t.context})
 }
 func (g *gateway) sweepLocked() {
 	for _, t := range g.turns {
@@ -733,7 +738,7 @@ func (g *gateway) rememberLocked(t *gatewayTurn, text string) {
 	header, keys := threadHeader(t.request), threadKeys(messages)
 	key := threadKey(header, keys[len(keys)-1])
 	g.forgetLocked(key)
-	g.threads[key] = &gatewayThread{conversation: t.conversation, mode: t.mode, workspace: t.workspace, sandbox: t.sandbox, used: time.Now(), header: header, keys: keys, nativeTools: t.nativeTools}
+	g.threads[key] = &gatewayThread{conversation: t.conversation, mode: t.mode, workspace: t.workspace, sandbox: t.sandbox, context: t.context, used: time.Now(), header: header, keys: keys, nativeTools: t.nativeTools}
 	for len(g.threads) > threadLimit {
 		oldest := ""
 		for k, th := range g.threads {
@@ -1029,7 +1034,7 @@ func (g *gateway) startLocked(req apiRequest, key string, transcript bool) (*api
 		t.initialKey = apiHash(key)
 	}
 	if thread != nil {
-		t.conversation, t.mode, t.workspace, t.sandbox, t.continued = thread.conversation, thread.mode, thread.workspace, thread.sandbox, continued
+		t.conversation, t.mode, t.workspace, t.sandbox, t.continued, t.context = thread.conversation, thread.mode, thread.workspace, thread.sandbox, continued, thread.context
 	}
 	if err := g.checkpointLocked(t); err != nil {
 		cancel()
@@ -1208,6 +1213,20 @@ func (g *gateway) finish(t *gatewayTurn, text string, failure *apiError) {
 	x.resolve(apiMessage{Role: "assistant", Content: text}, "stop", failure)
 }
 
+// noteContext records the context Work reported for t's final answer as its
+// usage and as the floor for the conversation's later tool calls. g.mu held.
+func (g *gateway) noteContextLocked(t *gatewayTurn, tokens int) {
+	if tokens > 0 {
+		t.context, t.current.prompt = tokens, tokens
+	}
+}
+
+// floorContextLocked raises a tool call's reported prompt to the context
+// Work last reported for its conversation. g.mu held.
+func floorContextLocked(t *gatewayTurn, x *apiExchange) {
+	x.prompt = max(x.prompt, t.context)
+}
+
 func writeAPIError(w http.ResponseWriter, e *apiError) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(e.Status)
@@ -1217,8 +1236,9 @@ func apiCompletion(x *apiExchange) object {
 	return object{"id": x.id, "object": "chat.completion", "created": x.created, "model": x.model, "choices": []any{object{"index": 0, "message": x.message, "finish_reason": x.finish, "logprobs": nil}}, "usage": apiUsage(x)}
 }
 
-// apiUsage estimates token usage; Work reports none. Clients size their
-// context from prompt_tokens, so it is better than reporting zero.
+// apiUsage reports token usage. prompt_tokens is the context Work reported
+// for the conversation when known (noteContext), else an estimate; clients
+// size their context from it. Completion tokens are always estimated.
 func apiUsage(x *apiExchange) object {
 	completion := estimateTokens(textValue(x.message.Content))
 	if len(x.message.ToolCalls) > 0 {

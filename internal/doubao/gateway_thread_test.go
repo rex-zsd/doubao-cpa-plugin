@@ -190,6 +190,8 @@ type fakeChat struct {
 	runs   map[string]string
 	n      int
 	reject func(object) int
+	// usage, when set, is the context_window_usage of every reply.
+	usage string
 }
 
 func (f *fakeChat) RoundTrip(r *http.Request) (*http.Response, error) {
@@ -225,6 +227,9 @@ func (f *fakeChat) RoundTrip(r *http.Request) (*http.Response, error) {
 		conversation := textValue(array(field(body, "uplink_body", "batch_get_conv_info_uplink_body", "conversation_id"))[0])
 		run := f.runs[conversation]
 		messages := []any{object{"user_type": 1, "message_id": run}, object{"user_type": 2, "message_id": run + "9", "bot_reply_message_id": run, "status": 0, "ext": object{"is_finish": "1"}, "content_block": []any{object{"content": object{"text_block": object{"text": "reply " + run}}}}}}
+		if f.usage != "" {
+			field(messages[1], "ext").(object)["context_window_usage"] = f.usage
+		}
 		return reply("application/json", jsonText(object{"status_code": 0, "downlink_body": object{"batch_get_conv_info_downlink_body": object{"conversation_info_list": []any{object{"conversation_id": conversation, "messages": messages}}}}}))
 	}
 	return nil, fmt.Errorf("unexpected request %s", r.URL.Path)
@@ -321,5 +326,53 @@ func TestContinuedPromptsAndBodies(t *testing.T) {
 	body := localToolBody("fixture", "1000000000001", Model{ID: "1", Think: 1}, "/owned", "sandbox", "123", "456", []any{})
 	if field(body, "client_meta", "conversation_id") != "1000000000001" || field(body, "option", "need_create_conversation") != false || field(body, "option", "conversation_init_ext") != nil || number(field(body, "option", "general_task_param", "runtime_type")) != 2 {
 		t.Fatal("continued local-runtime body", jsonText(body["option"]))
+	}
+}
+
+func TestReportedContextBecomesPromptUsage(t *testing.T) {
+	g, server := testGateway(t)
+	chat := &fakeChat{}
+	g.c.http.Transport = chat
+	ask := func(req apiRequest) (string, int) {
+		t.Helper()
+		status, response := postGateway(t, server, req, "")
+		if status != 200 {
+			t.Fatal(status, response)
+		}
+		return textValue(returnedMessage(t, response).Content), number(field(response, "usage", "prompt_tokens"))
+	}
+	first, estimated := ask(chatRequest("a"))
+	if estimated == 0 || estimated >= 1000 {
+		t.Fatal("reply without usage did not fall back to the estimate", estimated)
+	}
+	chat.usage = `{"system_prompt":7000,"tools":2000,"skills":500,"messages":21000,"total_window_size":256000}`
+	if _, prompt := ask(chatRequest("a", first, "b")); prompt != 30500 {
+		t.Fatal("reported context not used as prompt_tokens", prompt)
+	}
+	g.mu.Lock()
+	remembered := 0
+	for _, th := range g.threads {
+		remembered = max(remembered, th.context)
+	}
+	g.mu.Unlock()
+	if remembered != 30500 {
+		t.Fatal("conversation did not keep the reported context", remembered)
+	}
+}
+
+func TestContextTokensAndToolCallFloor(t *testing.T) {
+	reply := func(usage any) object { return object{"ext": object{"context_window_usage": usage}} }
+	for usage, want := range map[any]int{`{"system_prompt":1,"tools":2,"skills":3,"messages":4,"total_window_size":9}`: 10, "": 0, "{broken": 0, nil: 0} {
+		if got := contextTokens(reply(usage)); got != want {
+			t.Fatalf("contextTokens(%v) = %d, want %d", usage, got, want)
+		}
+	}
+	turn, x := &gatewayTurn{context: 500}, &apiExchange{prompt: 100}
+	if floorContextLocked(turn, x); x.prompt != 500 {
+		t.Fatal("tool call not raised to the conversation's context", x.prompt)
+	}
+	x.prompt = 900
+	if floorContextLocked(turn, x); x.prompt != 900 {
+		t.Fatal("larger estimate lowered", x.prompt)
 	}
 }

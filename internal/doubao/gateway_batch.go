@@ -132,6 +132,7 @@ func (g *gateway) forwardClientBatch(ctx context.Context, t *gatewayTurn, native
 		return nil, err
 	}
 	p.exposedAt = time.Now()
+	floorContextLocked(t, x)
 	g.mu.Unlock()
 	timing(t, "tool_call_ready", x.started)
 	x.resolve(message, "tool_calls", nil)

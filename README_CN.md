@@ -25,7 +25,7 @@ cd doubao-cpa-plugin
 把这两个文件放进 CPA 的插件目录。`.so` 的文件名要带版本号：CPA 按 `<id>-v<版本>.so` 识别插件，同一插件有多个版本时加载最高的那个。
 
 ```text
-plugins/linux/amd64/doubao-work-v0.3.25.so
+plugins/linux/amd64/doubao-work-v0.3.26.so
 plugins/doubao-work/bin/doubao-helper
 ```
 
@@ -123,6 +123,8 @@ Codex 的 Responses Lite 请求可以直接使用，包括 `additional_tools`、
 0.3.20 的连接器注册、可用性检查和回收在全局缓存锁外执行，不同工具目录可以独立前进；同目录操作协调等待，等待方可取消。缓存租约、创建/断开前的持久化意图、容量上限和重启恢复保持不变。
 
 0.3.21 把原生转发扩展到 NotebookEdit、Glob、Grep、TaskOutput、TaskStop 和后台 Bash。不支持或客户端未声明的工具仍按原方式提示改走 MCP，回复格式不变。
+
+0.3.26 起，`prompt_tokens` 报告豆包自己统计的上下文用量。每条完成的回答都带有系统提示、工具、技能和消息在模型上下文里各占多少 token；插件本来就会读回这条回答，所以不多发请求。Claude Code 这类按用量判断上下文的客户端，现在能看到豆包自身的开销（按模型不同约 7,000 到 42,000 token），不再只是按字数估算自己的提示词。任务中途的工具调用至少报告同一对话上一条回答的用量。豆包没有给出用量时仍用估算值；输出 token 仍是估算。
 
 0.3.25 起，插件每小时自己重新读取一次豆包的模型清单；有模型上新或下线时，改写账号文件里的刷新标记，让 CPA 重新登记。像 Orange 5.5 这样下线的模型会自动从 `/v1/models` 消失，不用重载插件，也不用去页面点刷新。
 

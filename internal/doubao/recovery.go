@@ -94,7 +94,7 @@ func (g *gateway) recoverTasks() error {
 			deadline = info.ModTime().Add(g.taskTimeout)
 		}
 		ctx, cancel := context.WithCancel(g.ctx)
-		t := &gatewayTurn{nativeTools: state["native_tools"] == true, id: id, request: req, ctx: ctx, cancel: cancel, deadline: deadline, statePath: path, receiptPath: filepath.Join(g.dir, "gateway-receipt-"+id+".json"), connector: textValue(state["connector_id"]), sandbox: textValue(state["sandbox_id"]), generationPosts: number(state["generation_posts"]), forwarded: number(state["forwarded_tools"]), denied: number(state["denied_tools"]), cleanupConfirmed: state["cleanup_confirmed"] == true, cleanupRequested: state["cleanup_requested"] == true, initialKey: textValue(state["initial_key"]), initialHash: textValue(state["initial_hash"]), finalText: textValue(state["final_text"]), conversation: textValue(state["conversation_id"]), mode: textValue(state["mode"]), workspace: textValue(state["workspace"]), continued: number(state["continued"])}
+		t := &gatewayTurn{nativeTools: state["native_tools"] == true, id: id, request: req, ctx: ctx, cancel: cancel, deadline: deadline, statePath: path, receiptPath: filepath.Join(g.dir, "gateway-receipt-"+id+".json"), connector: textValue(state["connector_id"]), sandbox: textValue(state["sandbox_id"]), generationPosts: number(state["generation_posts"]), forwarded: number(state["forwarded_tools"]), denied: number(state["denied_tools"]), cleanupConfirmed: state["cleanup_confirmed"] == true, cleanupRequested: state["cleanup_requested"] == true, initialKey: textValue(state["initial_key"]), initialHash: textValue(state["initial_hash"]), finalText: textValue(state["final_text"]), conversation: textValue(state["conversation_id"]), mode: textValue(state["mode"]), workspace: textValue(state["workspace"]), continued: number(state["continued"]), context: number(state["context_tokens"])}
 		t.started = time.Now()
 		t.connectorLease, t.connectorLabel = textValue(state["connector_lease"]), textValue(state["connector_label"])
 		exchanges := map[string]*apiExchange{}
@@ -278,6 +278,7 @@ func (g *gateway) resumeNative(t *gatewayTurn) {
 			timing(t, "upstream_complete", t.started)
 			g.mu.Lock()
 			t.conversation = receipt.ConversationID
+			g.noteContextLocked(t, receipt.Context)
 			g.mu.Unlock()
 			g.finish(t, reply, nil)
 			return

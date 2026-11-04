@@ -224,8 +224,11 @@ type Receipt struct {
 	Tasks          []*task        `json:"tasks"`
 	Events         map[string]int `json:"events"`
 	Reply          string         `json:"reply,omitempty"`
-	Completed      bool           `json:"completed"`
-	Request        object         `json:"request"`
+	// Context is the prompt size Work reported for the final answer, in
+	// tokens; 0 when it reported none.
+	Context   int    `json:"context_tokens,omitempty"`
+	Completed bool   `json:"completed"`
+	Request   object `json:"request"`
 }
 
 func buildBody(message, conversation, mode string, model Model) object {
@@ -527,6 +530,23 @@ func visibleText(message any) string {
 	}
 	return strings.TrimSpace(strings.Join(texts, "\n"))
 }
+
+// contextTokens is the context Work used for a reply, from the reply's
+// ext.context_window_usage: system prompt, tools, skills and messages, in
+// tokens. It is 0 when the reply has no usage.
+func contextTokens(message any) int {
+	var usage struct {
+		SystemPrompt int `json:"system_prompt"`
+		Tools        int `json:"tools"`
+		Skills       int `json:"skills"`
+		Messages     int `json:"messages"`
+	}
+	if json.Unmarshal([]byte(textValue(field(message, "ext", "context_window_usage"))), &usage) != nil {
+		return 0
+	}
+	return max(usage.SystemPrompt+usage.Tools+usage.Skills+usage.Messages, 0)
+}
+
 func (c *Client) readReply(ctx context.Context, r *Receipt) (string, bool, error) {
 	v, err := c.json(ctx, "POST", "/im/conversation/batch_get", nil, object{"cmd": 1111, "uplink_body": object{"batch_get_conv_info_uplink_body": object{"conversation_id": []string{r.ConversationID}, "option": object{"recent_message_count_per_conv": 100}, "ext": object{}}}, "sequence_id": token(), "channel": 2, "version": "1"})
 	if err != nil {
@@ -582,6 +602,7 @@ func (c *Client) readReply(ctx context.Context, r *Receipt) (string, bool, error
 		}
 		answer := visibleText(latest)
 		if answer != "" && textValue(field(latest, "ext", "is_finish")) == "1" {
+			r.Context = contextTokens(latest)
 			return answer, true, nil
 		}
 		return "", false, nil
