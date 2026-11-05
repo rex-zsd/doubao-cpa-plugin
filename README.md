@@ -23,7 +23,7 @@ cd doubao-cpa-plugin
 The build runs the race tests first and produces `doubao-work.so` and a static `doubao-helper`. Put both into CPA's plugin directory. The `.so` name must carry its version, because CPA loads the highest `<id>-v<version>.so` of each plugin:
 
 ```text
-plugins/linux/amd64/doubao-work-v0.3.27.so
+plugins/linux/amd64/doubao-work-v0.3.29.so
 plugins/doubao-work/bin/doubao-helper
 ```
 
@@ -89,6 +89,8 @@ Version 0.3.18 adds persistent connector leases in the CPA plugin, keyed by acco
 Version 0.3.19 adds opt-in `native_tools: true`. Compatible single calls and dependency chains can use Work's native channel without MCP discovery: explicitly declared, same-name `Read` for absolute `.txt` paths (optional one-based offset and limit), and foreground `Bash` with the original command and millisecond timeout. The HTTP client still executes every call and returns its actual result. Arguments must pass the original client schema. Only observed native display/sandbox defaults are removed; native IDs and original inputs are retained for replies. Media, other file types, background/elevated commands and all other tools retain MCP. Complete tools, descriptions, schemas and history remain available; independent calls prefer existing MCP batches when parallelism is allowed. If the added native instructions exceed the context limit, the task uses the complete MCP prompt when it fits. Pending calls restore their persisted routing policy even after configuration changes. The flag defaults to false; apply changes through a plugin version reload or a clean stop/reload. This reduces routing overhead for compatible calls while Work remains an Agent; it does not guarantee a fixed end-to-end speedup.
 
 Version 0.3.20 moves registration, availability checks and retirement outside the global connector-pool lock. Operations for the same catalog coordinate with cancellable waits; different catalogs can progress independently. Durable leases, creation/disconnect intents, capacity limits and recovery remain in place. Native forwarding also accepts known code/text Read paths (including `.go`, `.py`, `.js`, `.ts`, `.md` and `.json`) and same-name text Write/Edit. The client retains execution and approval; original arguments, actual results and errors survive HTTP replay and recovery. Unknown Read formats and incompatible arguments retain MCP. These changes target routing overhead and contention, with the same model, effort, full history and tool definitions.
+
+Version 0.3.29 reports Work's refusals by kind, as Doubao's own CLI sorts them. A refusal for an expired login is 401 `login_required`; one for a busy or rate-limited Work is 429 `upstream_busy`, which clients retry, since nothing ran; a malformed request is 400 and a feature the account may not use is 403. Other codes remain 422 `upstream_rejected`. Expired-login and busy refusals no longer fall back to a fresh conversation or another mode, which would only be refused again. A reply that Work withheld under its content policy now fails at once with 422 `content_blocked` instead of waiting for the task deadline, and a reply Work marks as ended in error or timeout fails as well.
 
 Version 0.3.27 trims two waits on every task. A cached connector that Work confirmed, or that a task used without failing, in the last two minutes is reused without listing the account's connectors again; that listing took about a second at the start of each task. After the stream ends, the final answer is read back every 250 ms for the first two seconds instead of every second.
 

@@ -192,9 +192,14 @@ type fakeChat struct {
 	reject func(object) int
 	// usage, when set, is the context_window_usage of every reply.
 	usage string
+	// extra fields replace those of every reply.
+	extra object
 }
 
 func (f *fakeChat) RoundTrip(r *http.Request) (*http.Response, error) {
+	if r.Body == nil {
+		return nil, fmt.Errorf("unexpected request %s", r.URL.Path)
+	}
 	var body object
 	if err := decode(r.Body, &body); err != nil {
 		return nil, err
@@ -229,6 +234,9 @@ func (f *fakeChat) RoundTrip(r *http.Request) (*http.Response, error) {
 		messages := []any{object{"user_type": 1, "message_id": run}, object{"user_type": 2, "message_id": run + "9", "bot_reply_message_id": run, "status": 0, "ext": object{"is_finish": "1"}, "content_block": []any{object{"content": object{"text_block": object{"text": "reply " + run}}}}}}
 		if f.usage != "" {
 			field(messages[1], "ext").(object)["context_window_usage"] = f.usage
+		}
+		for key, value := range f.extra {
+			messages[1].(object)[key] = value
 		}
 		return reply("application/json", jsonText(object{"status_code": 0, "downlink_body": object{"batch_get_conv_info_downlink_body": object{"conversation_info_list": []any{object{"conversation_id": conversation, "messages": messages}}}}}))
 	}
@@ -374,5 +382,48 @@ func TestContextTokensAndToolCallFloor(t *testing.T) {
 	x.prompt = 900
 	if floorContextLocked(turn, x); x.prompt != 900 {
 		t.Fatal("larger estimate lowered", x.prompt)
+	}
+}
+
+func TestRefusalClassesAndWithheldReplies(t *testing.T) {
+	g, server := testGateway(t)
+	chat := &fakeChat{}
+	g.c.http.Transport = chat
+	for _, c := range []struct {
+		code, status int
+		error        string
+		posts        int
+	}{
+		// An expired login or a busy Work refuses any fallback too, so the
+		// request is not sent again.
+		{710022004, 429, "upstream_busy", 1},
+		{710012007, 429, "upstream_busy", 1},
+		{710012001, 401, "login_required", 1},
+		{712010202, 400, "upstream_invalid_request", 2},
+		{710012008, 403, "upstream_forbidden", 2},
+		{710099999, 422, "upstream_rejected", 2},
+	} {
+		code := c.code
+		chat.reject = func(object) int { return code }
+		before := len(chat.bodies)
+		status, response := postGateway(t, server, chatRequest("x"), "")
+		if status != c.status || field(response, "error", "code") != c.error || len(chat.bodies)-before != c.posts {
+			t.Fatal(code, status, response, len(chat.bodies)-before)
+		}
+	}
+	chat.reject = nil
+	chat.extra = object{"status": 11}
+	started := time.Now()
+	status, response := postGateway(t, server, chatRequest("y"), "")
+	if status != 422 || field(response, "error", "code") != "content_blocked" || time.Since(started) > 5*time.Second {
+		t.Fatal("withheld reply", status, response, time.Since(started))
+	}
+	chat.extra = object{"final_status": object{"message": "Timeout"}}
+	if status, response = postGateway(t, server, chatRequest("z"), ""); status == 200 {
+		t.Fatal("failed reply was returned", response)
+	}
+	chat.extra = nil
+	if status, response = postGateway(t, server, chatRequest("w"), ""); status != 200 {
+		t.Fatal(status, response)
 	}
 }

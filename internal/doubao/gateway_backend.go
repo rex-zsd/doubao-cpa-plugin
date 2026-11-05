@@ -548,10 +548,25 @@ func (g *gateway) runNative(t *gatewayTurn) {
 		var rejected *upstreamError
 		if errors.As(err, &rejected) {
 			failure := apiFail(422, "upstream_rejected", rejected.Error())
+			switch rejectionClass(rejected.Code) {
+			case "login":
+				failure = apiFail(401, "login_required", "Doubao login expired; sign in again. "+rejected.Error())
+			case "capacity":
+				// Refused before acceptance, so nothing ran: retrying is safe.
+				failure = apiFail(429, "upstream_busy", "Doubao Work is busy or rate limited; retry later. "+rejected.Error())
+			case "invalid":
+				failure = apiFail(400, "upstream_invalid_request", rejected.Error())
+			case "permission":
+				failure = apiFail(403, "upstream_forbidden", rejected.Error())
+			}
 			if rejected.Code == 710020202 {
 				failure = promptTooLong(promptText(req))
 			}
 			g.finish(t, "", failure)
+			return
+		}
+		if errors.Is(err, errContentBlocked) {
+			g.finish(t, "", apiFail(422, "content_blocked", errContentBlocked.Error()+"; rephrase the request before retrying."))
 			return
 		}
 		fmt.Fprintln(os.Stderr, "GATEWAY_TASK_FAILED", err.Error())
@@ -633,6 +648,8 @@ func (g *gateway) runPlain(t *gatewayTurn, req apiRequest, model Model) (*Receip
 		}
 		lastRejected = receipt
 		switch {
+		case retryCannotHelp(rejected.Code):
+			return receipt, err
 		case conversation != "":
 			fmt.Fprintf(os.Stderr, "GATEWAY_THREAD_FALLBACK mode=%s code=%d\n", mode, rejected.Code)
 			conversation = ""
@@ -643,6 +660,13 @@ func (g *gateway) runPlain(t *gatewayTurn, req apiRequest, model Model) (*Receip
 			return receipt, err
 		}
 	}
+}
+
+// retryCannotHelp reports a refusal that a fresh conversation or another
+// mode would get as well: an expired login or a busy, rate-limited Work.
+func retryCannotHelp(code int) bool {
+	class := rejectionClass(code)
+	return class == "login" || class == "capacity"
 }
 
 func (g *gateway) runWithTools(t *gatewayTurn, req apiRequest, model Model) (*Receipt, error) {
@@ -740,7 +764,7 @@ func (g *gateway) runWithTools(t *gatewayTurn, req apiRequest, model Model) (*Re
 	}
 	receipt, runErr := g.c.runObserved(ctx, body, t.receiptPath, timingObserver(t, nil))
 	var rejected *upstreamError
-	if conversation != "" && errors.As(runErr, &rejected) && receipt != nil && !receipt.Accepted && ctx.Err() == nil {
+	if conversation != "" && errors.As(runErr, &rejected) && !retryCannotHelp(rejected.Code) && receipt != nil && !receipt.Accepted && ctx.Err() == nil {
 		fmt.Fprintf(os.Stderr, "GATEWAY_THREAD_FALLBACK mode=tools code=%d\n", rejected.Code)
 		g.mu.Lock()
 		t.conversation, t.context = "", 0

@@ -274,6 +274,26 @@ type upstreamError struct {
 	Message string
 }
 
+// rejectionClass sorts Work's refusal codes the way Doubao's own CLI does:
+// the session expired, Work is busy or rate limited, the request is
+// malformed, or the account may not use the feature. Other codes are "".
+func rejectionClass(code int) string {
+	switch code {
+	case 710012001, 710012006, 710012020, 712012001, 710022013, 710022022:
+		return "login"
+	case 710022004, 710012007:
+		return "capacity"
+	case 712010202, 712030202:
+		return "invalid"
+	case 710012000, 710020101, 710012012, 710022005, 710022010, 710022011, 710022016, 710022002, 710022017, 710022003, 671000007, 710012008, 710012009, 710012010, 710012011, 710012060, 710012061, 710012062, 712010101, 712030101, 712013104, 712033104, 712017002:
+		return "permission"
+	}
+	return ""
+}
+
+// errContentBlocked is a reply Work withheld under its content policy.
+var errContentBlocked = errors.New("Doubao Work withheld this reply under its content policy")
+
 func (e *upstreamError) Error() string {
 	message := e.Message
 	if r := []rune(message); len(r) > 200 {
@@ -578,7 +598,7 @@ func (c *Client) readReply(ctx context.Context, r *Receipt) (string, bool, error
 			b, _ := strconv.ParseUint(textValue(field(messages[j], "message_id")), 10, 64)
 			return a < b
 		})
-		root := false
+		root, blocked := false, false
 		var latest any
 		for _, m := range messages {
 			if number(field(m, "user_type")) == 1 && textValue(field(m, "message_id")) == r.RunID {
@@ -591,11 +611,20 @@ func (c *Client) readReply(ctx context.Context, r *Receipt) (string, bool, error
 			if number(field(m, "user_type")) == 2 && parent == r.RunID && number(field(m, "status")) == 0 {
 				latest = m
 			}
+			// Status 11 is how Work marks a reply it withheld; such a reply
+			// never finishes, so waiting for it only runs into the deadline.
+			if number(field(m, "user_type")) == 2 && parent == r.RunID && (number(field(m, "status")) == 11 || number(field(m, "status_v2")) == 11) {
+				blocked = true
+			}
+		}
+		if root && blocked && latest == nil {
+			return "", false, errContentBlocked
 		}
 		if !root || latest == nil {
 			return "", false, nil
 		}
-		if number(field(latest, "content_status")) == 500 || truthy(field(latest, "ext", "error_details")) {
+		final := textValue(field(latest, "final_status", "message"))
+		if number(field(latest, "content_status")) == 500 || truthy(field(latest, "ext", "error_details")) || final == "Error" || final == "Timeout" {
 			return "", false, errors.New("server reports failed generation")
 		}
 		if textValue(field(latest, "ext", "is_interrupted")) == "true" || number(field(latest, "content_status")) == 120 {
