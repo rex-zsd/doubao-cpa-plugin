@@ -35,6 +35,9 @@ func TestConnectorCacheNetworkWaitsDoNotBlockOtherCatalogs(t *testing.T) {
 					g.connectors.entries[otherSeed.connectorLease].Used = time.Now().Add(-2 * connectorCacheTTL)
 				}
 			}
+			if operation == "availability" {
+				distrust(g)
+			}
 			paths := map[string]string{"create": "create_personal", "availability": "list_by_user", "disconnect": "disconnect"}
 			entered, unblock := make(chan struct{}), make(chan struct{})
 			var once sync.Once

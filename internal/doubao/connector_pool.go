@@ -13,6 +13,11 @@ import (
 )
 
 const connectorCacheLimit = 8
+
+// connectorTrustWindow is how long a connector Work confirmed, or a task
+// used without failing, is taken as available without listing connectors
+// again. The list takes about a second at the start of every task.
+const connectorTrustWindow = 2 * time.Minute
 const connectorCacheTTL = 10 * time.Minute
 
 // A connector describes immutable tools; execution still belongs to a task's
@@ -21,8 +26,11 @@ type cachedConnector struct {
 	Instance, Key, Scope, Name, ID string
 	Phase                          string
 	Used                           time.Time
-	DisconnectRequested            bool
-	Holders                        map[string]bool
+	// Verified is when Work last confirmed the connector or a task used it
+	// without failing.
+	Verified            time.Time
+	DisconnectRequested bool
+	Holders             map[string]bool
 }
 
 type connectorPool struct {
@@ -197,25 +205,30 @@ func (p *connectorPool) acquire(t *gatewayTurn, tools []any) (string, bool, erro
 			p.signal()
 			continue
 		}
-		// This catalog stays reserved while the pool lock is released. A
-		// reaper cannot select it and another catalog can make progress.
-		p.mu.Unlock()
-		rows, err := p.list(t.ctx)
-		p.mu.Lock()
-		if err != nil {
-			return "", true, errors.New("cached connector availability could not be checked")
-		}
-		if err = t.ctx.Err(); err != nil {
-			return "", true, err
-		}
-		if e.Phase != "ready" {
-			// A failed holder can retire its connector during our check.
-			return "", true, errors.New("cached connector was retired while checking availability")
-		}
-		available := false
-		for _, row := range rows {
-			if textValue(field(row, "connector_id")) == e.ID && textValue(field(row, "name")) == e.Name && (field(row, "enabled") == true || number(field(row, "enabled")) == 1) {
-				available = true
+		available := time.Since(e.Verified) < connectorTrustWindow
+		if !available {
+			// This catalog stays reserved while the pool lock is released. A
+			// reaper cannot select it and another catalog can make progress.
+			p.mu.Unlock()
+			rows, err := p.list(t.ctx)
+			p.mu.Lock()
+			if err != nil {
+				return "", true, errors.New("cached connector availability could not be checked")
+			}
+			if err = t.ctx.Err(); err != nil {
+				return "", true, err
+			}
+			if e.Phase != "ready" {
+				// A failed holder can retire its connector during our check.
+				return "", true, errors.New("cached connector was retired while checking availability")
+			}
+			for _, row := range rows {
+				if textValue(field(row, "connector_id")) == e.ID && textValue(field(row, "name")) == e.Name && (field(row, "enabled") == true || number(field(row, "enabled")) == 1) {
+					available = true
+				}
+			}
+			if available {
+				e.Verified = time.Now()
 			}
 		}
 		if !available {
@@ -223,18 +236,18 @@ func (p *connectorPool) acquire(t *gatewayTurn, tools []any) (string, bool, erro
 				return "", true, errors.New("leased connector is unavailable; active tasks were not restarted")
 			}
 			e.Phase = "retiring"
-			if err = p.save(); err != nil {
+			if err := p.save(); err != nil {
 				return "", true, err
 			}
 			p.signal()
 			continue
 		}
 		e.Holders[t.id], e.Used = true, time.Now()
-		if err = p.save(); err != nil {
+		if err := p.save(); err != nil {
 			delete(e.Holders, t.id)
 			return "", true, err
 		}
-		if err = p.attach(t, e); err != nil {
+		if err := p.attach(t, e); err != nil {
 			return e.ID, true, err
 		}
 		timing(t, "connector_cache_hit", time.Time{})
@@ -302,7 +315,7 @@ func (p *connectorPool) acquire(t *gatewayTurn, tools []any) (string, bool, erro
 	if err != nil {
 		return e.ID, true, err
 	}
-	e.Phase = "ready"
+	e.Phase, e.Verified = "ready", time.Now()
 	if err := p.save(); err != nil {
 		return e.ID, true, err
 	}
@@ -329,6 +342,8 @@ func (p *connectorPool) release(t *gatewayTurn) error {
 		}
 		if failed || e.Phase != "ready" {
 			e.Phase = "retiring"
+		} else {
+			e.Verified = time.Now()
 		}
 		if err := p.save(); err != nil {
 			// Keep it pinned in memory too; a later recovery recomputes holders.

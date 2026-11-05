@@ -415,7 +415,7 @@ func (c *Client) runObserved(ctx context.Context, body object, receiptPath strin
 			return r, err
 		}
 	}
-	for {
+	for poll := 0; ; poll++ {
 		text, finished, err := c.readReply(ctx, r)
 		if err != nil {
 			return r, err
@@ -433,9 +433,19 @@ func (c *Client) runObserved(ctx context.Context, body object, receiptPath strin
 		select {
 		case <-ctx.Done():
 			return r, ctx.Err()
-		case <-time.After(time.Second):
+		case <-time.After(readbackDelay(poll)):
 		}
 	}
+}
+
+// readbackDelay is the wait before readback poll+1. The stream has ended,
+// so the answer usually lands within a moment: poll every 250 ms for the
+// first two seconds, then every second.
+func readbackDelay(poll int) time.Duration {
+	if poll < 8 {
+		return 250 * time.Millisecond
+	}
+	return time.Second
 }
 
 // followTask reads an async task's events after its cursor. A dropped or

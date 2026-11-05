@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -155,11 +156,13 @@ func TestConnectorCacheRechecksMissingDisabledAndUnknownAvailability(t *testing.
 		t.Fatal(err)
 	}
 	f.rows[id]["enabled"] = false
+	distrust(g)
 	b := cacheTurn(t, g)
 	if _, err = g.newConnector(b, toolCatalog(b.request)); err == nil || f.creates != 1 || b.connectorLease != "" {
 		t.Fatal("unavailable active connector was replaced or leased")
 	}
 	releaseCacheTurn(t, g, a)
+	distrust(g)
 	delete(f.rows, id)
 	f.listError = true
 	if _, err = g.newConnector(b, toolCatalog(b.request)); err == nil || f.creates != 1 {
@@ -385,4 +388,42 @@ func TestConnectorCacheNumericIDsKeepAvailabilityAndCleanup(t *testing.T) {
 	if err = g.connectors.reap(context.Background(), true); err != nil || f.disconnects[id] != 1 || len(f.rows) != 0 {
 		t.Fatal("numeric ID cleanup was falsely confirmed", err)
 	}
+}
+
+// distrust makes every cached connector old enough to be listed again.
+func distrust(g *gateway) {
+	g.connectors.mu.Lock()
+	defer g.connectors.mu.Unlock()
+	for _, e := range g.connectors.entries {
+		e.Verified = time.Time{}
+	}
+}
+
+func TestConnectorCacheTrustsARecentConfirmation(t *testing.T) {
+	g, f := cacheFixture(t)
+	var lists atomic.Int32
+	g.c.http.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
+		if strings.HasSuffix(r.URL.Path, "/connector/list_by_user") {
+			lists.Add(1)
+		}
+		return f.RoundTrip(r)
+	})
+	a := cacheTurn(t, g)
+	id, err := g.newConnector(a, toolCatalog(a.request))
+	if err != nil {
+		t.Fatal(err)
+	}
+	releaseCacheTurn(t, g, a)
+	before := lists.Load()
+	b := cacheTurn(t, g)
+	if again, err := g.newConnector(b, toolCatalog(b.request)); err != nil || again != id || lists.Load() != before {
+		t.Fatal("recently confirmed connector was listed again or replaced", err, lists.Load()-before)
+	}
+	releaseCacheTurn(t, g, b)
+	distrust(g)
+	c := cacheTurn(t, g)
+	if again, err := g.newConnector(c, toolCatalog(c.request)); err != nil || again != id || lists.Load() != before+1 {
+		t.Fatal("connector past the trust window was not listed", err, lists.Load()-before)
+	}
+	releaseCacheTurn(t, g, c)
 }
