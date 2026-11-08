@@ -84,7 +84,7 @@ func TestLiveInlineReplyReadsOneFinalMessageWithoutRegeneration(t *testing.T) {
 }
 
 func TestInlineLookupFallsBackWhenProofOrSnapshotIsIncomplete(t *testing.T) {
-	for _, name := range []string{"no-root", "no-finish", "wrong-finish", "ambiguous", "async", "local", "recovered", "not-ended", "wrong-id", "wrong-parent", "wrong-role", "missing-status", "unfinished", "missing-usage", "complex-task", "transport", "truncated", "not-sse", "refused"} {
+	for _, name := range []string{"no-root", "no-finish", "wrong-finish", "second-finish", "missing-meta", "foreign-meta", "unknown-full-meta", "repeated-ack", "no-local", "ambiguous", "async", "async-with-task", "local", "recovered", "not-ended", "wrong-id", "wrong-parent", "wrong-role", "missing-status", "unfinished", "missing-usage", "complex-task", "transport", "truncated", "not-sse", "refused", "split-status", "split-parent", "split-ext"} {
 		t.Run(name, func(t *testing.T) {
 			c, _ := newClient(t.TempDir())
 			r := lookupReceipt()
@@ -106,6 +106,27 @@ func TestInlineLookupFallsBackWhenProofOrSnapshotIsIncomplete(t *testing.T) {
 				wantLookups = 0
 			case "async":
 				r.Events["FETCH_STREAM"] = 1
+				wantLookups = 0
+			case "second-finish":
+				r.observeInlineReply("SSE_REPLY_END", object{"end_type": 1, "msg_finish_attr": object{"msgid": "other"}})
+				wantLookups = 0
+			case "missing-meta":
+				r.observeInlineReply("STREAM_MSG_NOTIFY", object{})
+				wantLookups = 0
+			case "foreign-meta":
+				r.observeInlineReply("STREAM_MSG_NOTIFY", object{"meta": object{"user_type": 2, "conversation_id": "other", "message_id": lookupReply, "bot_reply_message_id": lookupRun}})
+				wantLookups = 0
+			case "unknown-full-meta":
+				r.observeInlineReply("FULL_MSG_NOTIFY", object{})
+				wantLookups = 0
+			case "repeated-ack":
+				r.observeInlineReply("SSE_ACK", object{})
+				wantLookups = 0
+			case "no-local":
+				r.LocalID = ""
+				wantLookups = 0
+			case "async-with-task":
+				r.Tasks = []*task{{ID: "pending"}}
 				wantLookups = 0
 			case "local":
 				field(r.Request, "option", "general_task_param").(map[string]any)["runtime_type"] = 2
@@ -154,6 +175,18 @@ func TestInlineLookupFallsBackWhenProofOrSnapshotIsIncomplete(t *testing.T) {
 				}
 				if name == "refused" {
 					raw = "event: STREAM_MSG_ERROR\ndata: {}\n\n"
+				}
+				if strings.HasPrefix(name, "split-") {
+					part := object{}
+					switch name {
+					case "split-status":
+						part["status"] = 11
+					case "split-parent":
+						part["bot_reply_message_id"] = "other"
+					case "split-ext":
+						part["ext"] = object{"is_interrupted": "true"}
+					}
+					raw = lookupFrame("STREAM_MSG_START", message) + lookupFrame("STREAM_MSG_END", part)
 				}
 				return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{contentType}}, Body: io.NopCloser(strings.NewReader(raw))}, nil
 			})
@@ -208,5 +241,24 @@ func TestNativeMessageLoaderJoinsSplitBodyWithoutLosingMetadata(t *testing.T) {
 	loaded, err := c.loadMessage(context.Background(), lookupConv, lookupReply)
 	if err != nil || visibleText(loaded) != "first\nsecond" || contextTokens(loaded) != 23 || field(loaded, "bot_reply_message_id") != lookupRun {
 		t.Fatal("split message lost content or metadata", loaded, err)
+	}
+}
+
+func TestConversationReadbackRejectsWithheldV2Status(t *testing.T) {
+	c, _ := newClient(t.TempDir())
+	r := lookupReceipt()
+	r.inlineReadback = nil
+	message := lookupMessage()
+	message["status_v2"] = 11
+	c.http.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if req.URL.Path != "/im/conversation/batch_get" {
+			t.Fatal(req.URL.Path)
+		}
+		body := object{"status_code": 0, "downlink_body": object{"batch_get_conv_info_downlink_body": object{"conversation_info_list": []any{object{"conversation_id": lookupConv, "messages": []any{object{"user_type": 1, "message_id": lookupRun}, message}}}}}}
+		return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(jsonText(body)))}, nil
+	})
+	answer, finished, err := c.readReply(context.Background(), r)
+	if !errors.Is(err, errContentBlocked) || finished || answer != "" || r.Context != 0 {
+		t.Fatal("withheld final message returned as success", answer, finished, err)
 	}
 }

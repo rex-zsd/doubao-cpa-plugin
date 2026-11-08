@@ -6,7 +6,9 @@
 
 豆包 Work 实际运行的是 agent，插件把它的对话和真实连接器调用转换成 LLM API。系统消息优先级、温度、token 预算等底层模型语义无法因此获得，见下文的参数表。
 
-当前版本为 0.3.24，已在官方 CPA v8.0.13 上实测，见[原生工具提示词精简](docs/NATIVE_PROMPT_0324_CN.md)。
+当前版本为 0.3.31。完整保留模型目录的附加参数，按原生模型、汇总和会话字段写入推理档位；未指定档位时保留默认值。确定的普通 Work 回复按消息 ID 回读，继续校验最终正文、完成或错误状态和实际上下文用量。异步、本地工具、恢复中的任务，以及身份或分段信息不完整的回复沿用会话查询，不会为此重新生成请求。所有 API 请求继续走 Work。
+
+0.3.24 的历史验证见[原生工具提示词精简](docs/NATIVE_PROMPT_0324_CN.md)。原生字段的档位不是实际思考 token 预算回执，性能收益以实际调用为准。
 
 支持 CPA 的 OAuth 模型别名，可让现有 Claude 客户端用兼容模型名调用豆包 Work，配置和执行语义见 [模型别名说明](docs/MODEL_ALIASES_CN.md)。
 
@@ -25,7 +27,7 @@ cd doubao-cpa-plugin
 把这两个文件放进 CPA 的插件目录。`.so` 的文件名要带版本号：CPA 按 `<id>-v<版本>.so` 识别插件，同一插件有多个版本时加载最高的那个。
 
 ```text
-plugins/linux/amd64/doubao-work-v0.3.30.so
+plugins/linux/amd64/doubao-work-v0.3.31.so
 plugins/doubao-work/bin/doubao-helper
 ```
 

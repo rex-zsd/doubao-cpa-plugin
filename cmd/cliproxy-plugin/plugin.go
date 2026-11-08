@@ -19,7 +19,7 @@ import (
 const provider = "doubao-work"
 
 // pluginVersion is reported to CPA and shown on the plugin page.
-const pluginVersion = "0.3.30"
+const pluginVersion = "0.3.31"
 
 type object = map[string]any
 type config struct {

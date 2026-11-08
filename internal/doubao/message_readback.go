@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -18,6 +19,11 @@ type inlineReplyProof struct {
 }
 
 func (r *Receipt) observeInlineReply(name string, data object) {
+	if name == "SSE_ACK" {
+		// A repeated acceptance event needs fresh identity evidence too.
+		r.inlineReadback = nil
+		return
+	}
 	if !r.Accepted {
 		return
 	}
@@ -29,17 +35,30 @@ func (r *Receipt) observeInlineReply(name string, data object) {
 	switch name {
 	case "FULL_MSG_NOTIFY":
 		meta = data["message"]
-		if number(field(meta, "user_type")) == 1 && textValue(field(meta, "conversation_id")) == r.ConversationID && textValue(field(meta, "message_id")) == r.RunID && textValue(field(meta, "local_message_id")) == r.LocalID {
-			p.rootVerified = true
+		if number(field(meta, "user_type")) == 1 {
+			if r.LocalID != "" && textValue(field(meta, "conversation_id")) == r.ConversationID && textValue(field(meta, "message_id")) == r.RunID && textValue(field(meta, "local_message_id")) == r.LocalID {
+				p.rootVerified = true
+			} else {
+				p.ambiguous = true
+			}
+			return
 		}
 	case "STREAM_MSG_NOTIFY":
 		meta = data["meta"]
 	case "SSE_REPLY_END":
-		if number(data["end_type"]) == 1 && p.messageID != "" && textValue(field(data, "msg_finish_attr", "msgid")) == p.messageID {
-			p.finished = true
+		if number(data["end_type"]) == 1 {
+			if p.messageID != "" && textValue(field(data, "msg_finish_attr", "msgid")) == p.messageID {
+				p.finished = true
+			} else {
+				p.ambiguous = true
+			}
 		}
+		return
+	default:
+		return
 	}
 	if number(field(meta, "user_type")) != 2 || textValue(field(meta, "conversation_id")) != r.ConversationID {
+		p.ambiguous = true
 		return
 	}
 	if textValue(field(meta, "bot_reply_message_id")) != r.RunID {
@@ -61,7 +80,7 @@ func (c *Client) readInlineReply(ctx context.Context, r *Receipt) (string, bool,
 	p := r.inlineReadback
 	// One attempt at most; any uncertainty falls back to the existing lookup.
 	r.inlineReadback = nil
-	if p == nil || !r.Accepted || !r.StreamEnded || !p.rootVerified || !p.finished || p.ambiguous || p.messageID == "" || len(r.Tasks) != 0 || r.Events["FETCH_STREAM"] != 0 || number(field(r.Request, "option", "agent_mode")) != 1 || number(field(r.Request, "option", "general_task_param", "runtime_type")) != 1 {
+	if p == nil || !r.Accepted || !r.StreamEnded || r.LocalID == "" || !p.rootVerified || !p.finished || p.ambiguous || p.messageID == "" || len(r.Tasks) != 0 || r.Events["FETCH_STREAM"] != 0 || number(field(r.Request, "option", "agent_mode")) != 1 || number(field(r.Request, "option", "general_task_param", "runtime_type")) != 1 {
 		return "", false, false, nil
 	}
 	lookupCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
@@ -136,6 +155,13 @@ func (c *Client) loadMessage(ctx context.Context, conversation, messageID string
 		if message == nil || name == "FULL_MSG" {
 			message = part
 		} else {
+			// A changed or incomplete fragment metadata record needs the full
+			// conversation check rather than the first fragment's stale values.
+			for _, key := range []string{"user_type", "bot_reply_message_id", "status", "status_v2", "content_status", "final_status", "ext"} {
+				if value, exists := part[key]; exists && !reflect.DeepEqual(message[key], value) {
+					return false, errors.New("message lookup fragment metadata changed")
+				}
+			}
 			// The native loader preserves the first fragment's complete metadata
 			// and appends later content blocks. A split body never bypasses the
 			// caller's final identity and status checks.

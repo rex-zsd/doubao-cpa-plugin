@@ -661,6 +661,9 @@ func (c *Client) readReply(ctx context.Context, r *Receipt) (string, bool, error
 
 // Both lookup routes use the same final-answer, error and context checks.
 func finishedReply(latest any, r *Receipt) (string, bool, error) {
+	if number(field(latest, "status")) == 11 || number(field(latest, "status_v2")) == 11 {
+		return "", false, errContentBlocked
+	}
 	final := textValue(field(latest, "final_status", "message"))
 	if number(field(latest, "content_status")) == 500 || truthy(field(latest, "ext", "error_details")) || final == "Error" || final == "Timeout" {
 		return "", false, errors.New("server reports failed generation")

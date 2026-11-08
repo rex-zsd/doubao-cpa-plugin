@@ -23,7 +23,7 @@ cd doubao-cpa-plugin
 The build runs the race tests first and produces `doubao-work.so` and a static `doubao-helper`. Put both into CPA's plugin directory. The `.so` name must carry its version, because CPA loads the highest `<id>-v<version>.so` of each plugin:
 
 ```text
-plugins/linux/amd64/doubao-work-v0.3.30.so
+plugins/linux/amd64/doubao-work-v0.3.31.so
 plugins/doubao-work/bin/doubao-helper
 ```
 
@@ -81,6 +81,8 @@ Model IDs are slugs of the Work display names, such as `doubao-auto`, `doubao-2.
 For Claude Code, point `ANTHROPIC_BASE_URL` at CPA and set `ANTHROPIC_DEFAULT_HAIKU_MODEL`, `CLAUDE_CODE_MAX_CONTEXT_TOKENS=90000` and `CLAUDE_STREAM_IDLE_TIMEOUT_MS=900000`. [README_CN.md](README_CN.md) covers these settings, the error codes and the tested limits in detail.
 
 Account sessions, request receipts and tool results stay in the private state directory. Licensing and source acknowledgments are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Version 0.3.31 forwards the live catalog's complete model parameters and writes reasoning overrides in the native model, aggregate and conversation settings. Omitted effort keeps the model default. Uninterrupted cloud Work replies with verified identities use a final per-message lookup; async, local-tool, ambiguous and restored runs retain conversation readback. Both routes validate final text, completion/error status and actual context usage. A missing or inconsistent snapshot falls back without submitting another generation. All API requests continue to use Work.
 
 Version 0.3.17 preserves Claude tool-result error flags through upload and recovery, restores explicit Claude parallel permissions, and keeps full original definitions beside grouped, locally validated batch entries with complete schemas for large catalogs (scoped or oversized schemas use a separate compact entry). Explicitly disabled parallel calls remain disabled. Continued conversations are checked against the actual outgoing delta; an oversized full-history fallback fails with a compaction error instead of truncating history. Additional timing spans separate native result upload, stream completion and verified readback.
 
