@@ -183,7 +183,7 @@ func TestNativeAnswerReturnsBeforeCleanupAndContinues(t *testing.T) {
 	if err != nil || !strings.Contains(string(schema), "Preserve this exact tool description.") || !strings.Contains(string(schema), "client_nonce") {
 		t.Fatal("tool catalog changed", err)
 	}
-	if continued.request.Effort != 7 || field(f.chat.last(), "ext", "reasoning_effort") != "7" || jsonText(continued.request.Tools) != jsonText(req.Tools) {
+	if continued.request.Effort != 7 || number(field(f.chat.last(), "option", "model_config", "reasoning_effort")) != 7 || field(f.chat.last(), "option", "aggregate_params", "reasoning_effort") != "7" || jsonText(continued.request.Tools) != jsonText(req.Tools) {
 		t.Fatal("request capability changed")
 	}
 	// The worker remains tracked even though its answer has been delivered.

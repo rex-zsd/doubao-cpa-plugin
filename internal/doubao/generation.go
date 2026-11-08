@@ -28,6 +28,9 @@ type Model struct {
 	// request is still one message capped at maxPromptChars.
 	Window  int   `json:"window,omitempty"`
 	Efforts []int `json:"efforts,omitempty"`
+	// ExtraParams is the complete, live catalog configuration for this model.
+	// The native client sends it even when there is no reasoning override.
+	ExtraParams map[string]any `json:"extra_params,omitempty"`
 }
 
 func contains(values []string, v string) bool {
@@ -79,7 +82,8 @@ func (c *Client) models(ctx context.Context) ([]Model, error) {
 		}
 		m := byID[id]
 		if m == nil {
-			m = &Model{ID: id, Name: name, Display: name, Provider: textValue(field(item, "model_extra_params", "provider_id")), Think: number(field(item, "item_id")), Available: !truthy(field(item, "disabled")) && !truthy(field(item, "subscribe_config", "need_upgrade")), Modes: []string{}, Window: number(field(item, "model_extra_params", "total_window_size"))}
+			extra, _ := field(item, "model_extra_params").(map[string]any)
+			m = &Model{ID: id, Name: name, Display: name, Provider: textValue(field(item, "model_extra_params", "provider_id")), Think: number(field(item, "item_id")), Available: !truthy(field(item, "disabled")) && !truthy(field(item, "subscribe_config", "need_upgrade")), Modes: []string{}, Window: number(field(item, "model_extra_params", "total_window_size")), ExtraParams: extra}
 			for _, option := range array(field(item, "reasoning_effort_config", "option_list")) {
 				if level := number(field(option, "level")); level > 0 {
 					m.Efforts = append(m.Efforts, level)
@@ -240,7 +244,11 @@ func buildBody(message, conversation, mode string, model Model) object {
 	}
 	gt := object{"action": 0, "thread_local_message_id": []string{localID}, "runtime_type": 1, "agent_task_param": object{"runtime_type": 1}, "agent_task_param_change": object{"runtime_changed": false, "device_changed": false, "sandbox_auth_type_changed": false}, "need_modify_conversation": false, "task_input_json": `{"schema_version":1,"project_context":{}}`}
 	init := object{"need_ack_conversation": true}
-	option := object{"create_time_ms": time.Now().UnixMilli(), "agent_mode": agent, "need_deep_think": model.Think, "unique_key": token(), "recovery_option": object{"is_recovery": false, "req_create_time_sec": time.Now().Unix(), "append_sse_event_scene": 0}, "need_create_conversation": conversation == "", "is_old_user": true, "message_from": 0, "sse_recv_event_options": object{"support_chunk_delta": true}, "general_task_param": gt, "model_config": object{"model_item_key": model.ID}, "aggregate_params": object{"provider_id": model.Provider}}
+	extra := object{}
+	for key, value := range model.ExtraParams {
+		extra[key] = value
+	}
+	option := object{"create_time_ms": time.Now().UnixMilli(), "agent_mode": agent, "need_deep_think": model.Think, "unique_key": token(), "recovery_option": object{"is_recovery": false, "req_create_time_sec": time.Now().Unix(), "append_sse_event_scene": 0}, "need_create_conversation": conversation == "", "is_old_user": true, "message_from": 0, "sse_recv_event_options": object{"support_chunk_delta": true}, "general_task_param": gt, "model_config": object{"model_item_key": model.ID, "model_extra_params": extra}, "aggregate_params": object{"provider_id": model.Provider, "conversation_mode": "", "mode_id": modeID, "model_item_key": model.ID, "agent_mode": strconv.Itoa(agent), "reasoning_effort": ""}}
 	if conversation == "" {
 		option["conversation_init_option"] = init
 		option["conversation_init_ext"] = object{"mode_id": modeID, "model_item_key": model.ID}
@@ -305,8 +313,7 @@ func (e *upstreamError) Error() string {
 // applyEffort selects Work's reasoning level: the highest catalog option not
 // above level, else the lowest. Zero keeps the model default.
 func applyEffort(body object, model Model, level int) {
-	ext, ok := body["ext"].(object)
-	if level <= 0 || len(model.Efforts) == 0 || !ok {
+	if level <= 0 || len(model.Efforts) == 0 {
 		return
 	}
 	chosen := model.Efforts[0]
@@ -315,7 +322,18 @@ func applyEffort(body object, model Model, level int) {
 			chosen = option
 		}
 	}
-	ext["reasoning_effort"] = strconv.Itoa(chosen)
+	// Native serializers put the numeric override in model_config; the
+	// aggregate and new-conversation settings use strings. Legacy ext alone
+	// does not establish that the upstream applied an override.
+	if config, ok := field(body, "option", "model_config").(map[string]any); ok {
+		config["reasoning_effort"] = chosen
+	}
+	if aggregate, ok := field(body, "option", "aggregate_params").(map[string]any); ok {
+		aggregate["reasoning_effort"] = strconv.Itoa(chosen)
+	}
+	if init, ok := field(body, "option", "conversation_init_ext").(map[string]any); ok {
+		init["reasoning_effort"] = strconv.Itoa(chosen)
+	}
 }
 
 func (c *Client) run(ctx context.Context, body object, receiptPath string) (*Receipt, error) {
