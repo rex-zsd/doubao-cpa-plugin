@@ -504,7 +504,7 @@ func (g *gateway) runNative(t *gatewayTurn) {
 	g.mu.Lock()
 	req := t.request
 	g.mu.Unlock()
-	// The catalog lists models for Work; chat mode takes the same ones.
+	// Both plain answers and tool-using tasks run in Work with this catalog.
 	model, _, err := selectModel(g.catalog(), req.Model, "work")
 	var receipt *Receipt
 	if err == nil && !usesTools(req) {
@@ -596,19 +596,25 @@ func (g *gateway) runNative(t *gatewayTurn) {
 	g.finish(t, reply, nil)
 }
 
-// runPlain answers a request without tools in Work's chat mode, which answers
-// sooner than an agent task and keeps the request out of the Work task list.
+// runPlain answers a request without client tools directly in Work. The chat
+// endpoint can accept the same model selector without preserving its reasoning
+// behavior, so plugin requests never use ordinary chat mode.
 // A task continuing a conversation sends only the messages after its answer.
 // Work refusing a generation before accepting it means nothing was submitted,
 // so a refused continuation is resent as a new conversation with the full
-// transcript, and a request chat mode refuses is resent to Work.
+// transcript. A conversation left by an older chat-mode version is also
+// restarted in Work with the full history, rather than continued in chat.
 func (g *gateway) runPlain(t *gatewayTurn, req apiRequest, model Model) (*Receipt, error) {
 	g.mu.Lock()
 	conversation, continued, mode := t.conversation, t.continued, t.mode
 	g.mu.Unlock()
-	if mode == "" {
-		mode = "chat"
+	if mode != "work" {
+		conversation, continued = "", 0
+		g.mu.Lock()
+		t.continued, t.context = 0, 0
+		g.mu.Unlock()
 	}
+	mode = "work"
 	var lastRejected *Receipt
 	for {
 		part := req
@@ -653,9 +659,6 @@ func (g *gateway) runPlain(t *gatewayTurn, req apiRequest, model Model) (*Receip
 		case conversation != "":
 			fmt.Fprintf(os.Stderr, "GATEWAY_THREAD_FALLBACK mode=%s code=%d\n", mode, rejected.Code)
 			conversation = ""
-		case mode == "chat" && rejected.Code != 710020202:
-			fmt.Fprintf(os.Stderr, "GATEWAY_CHAT_FALLBACK code=%d\n", rejected.Code)
-			mode = "work"
 		default:
 			return receipt, err
 		}

@@ -30,7 +30,7 @@ func threadRunner(g *gateway, starts chan<- threadStart) func(*gatewayTurn) {
 			turn.conversation = fmt.Sprintf("conv-%d", n)
 		}
 		if turn.mode == "" {
-			turn.mode = "chat"
+			turn.mode = "work"
 		}
 		turn.generationPosts++
 		answer := turn.conversation + ": " + textValue(turn.request.Messages[len(turn.request.Messages)-1].Content)
@@ -256,7 +256,7 @@ func sentText(body object) string {
 	return textValue(field(blocks[0], "content", "text_block", "text"))
 }
 
-func TestPlainRequestsUseChatModeAndContinueTheirConversation(t *testing.T) {
+func TestPlainRequestsUseWorkModeAndContinueTheirConversation(t *testing.T) {
 	g, server := testGateway(t)
 	chat := &fakeChat{}
 	g.c.http.Transport = chat
@@ -270,8 +270,8 @@ func TestPlainRequestsUseChatModeAndContinueTheirConversation(t *testing.T) {
 	}
 	first := ask(chatRequest("a"))
 	body := chat.last()
-	if number(field(body, "option", "agent_mode")) != 2 || field(body, "option", "conversation_init_ext", "mode_id") != "1" || field(body, "option", "need_create_conversation") != true || sentText(body) != "a" {
-		t.Fatal("first request was not a new chat-mode conversation", jsonText(field(body, "option")))
+	if number(field(body, "option", "agent_mode")) != 1 || field(body, "option", "conversation_init_ext", "mode_id") != "3" || field(body, "option", "need_create_conversation") != true || sentText(body) != "a" {
+		t.Fatal("first request was not a new Work-mode conversation", jsonText(field(body, "option")))
 	}
 	conversation := textValue(field(body, "client_meta", "conversation_id"))
 	if conversation != "" {
@@ -279,7 +279,7 @@ func TestPlainRequestsUseChatModeAndContinueTheirConversation(t *testing.T) {
 	}
 	second := ask(chatRequest("a", first, "b"))
 	body = chat.last()
-	if field(body, "client_meta", "conversation_id") != fakeConversation(1) || field(body, "option", "need_create_conversation") != false || field(body, "option", "conversation_init_ext") != nil || number(field(body, "option", "agent_mode")) != 2 || sentText(body) != "b" {
+	if field(body, "client_meta", "conversation_id") != fakeConversation(1) || field(body, "option", "need_create_conversation") != false || field(body, "option", "conversation_init_ext") != nil || number(field(body, "option", "agent_mode")) != 1 || sentText(body) != "b" {
 		t.Fatal("follow-up did not continue the conversation with only the new message", jsonText(body["client_meta"]), sentText(body))
 	}
 	// Work refusing the continuation before accepting it resends the whole
@@ -292,35 +292,82 @@ func TestPlainRequestsUseChatModeAndContinueTheirConversation(t *testing.T) {
 	}
 	ask(chatRequest("a", first, "b", second, "c"))
 	body = chat.last()
-	if field(body, "client_meta", "conversation_id") != "" || !strings.Contains(sentText(body), "完整对话记录") || !strings.Contains(sentText(body), `"c"`) || number(field(body, "option", "agent_mode")) != 2 {
+	if field(body, "client_meta", "conversation_id") != "" || !strings.Contains(sentText(body), "完整对话记录") || !strings.Contains(sentText(body), `"c"`) || number(field(body, "option", "agent_mode")) != 1 {
 		t.Fatal("refused continuation was not resent in full", sentText(body))
 	}
-	// A request chat mode refuses goes to Work.
-	chat.reject = func(body object) int {
-		if number(field(body, "option", "agent_mode")) == 2 {
-			return 710000002
-		}
-		return 0
-	}
+	// A distinct conversation also starts in Work, without probing chat first.
+	chat.reject = nil
+	before := len(chat.bodies)
 	work := ask(chatRequest("x"))
 	body = chat.last()
-	if number(field(body, "option", "agent_mode")) != 1 || field(body, "option", "conversation_init_ext", "mode_id") != "3" {
-		t.Fatal("chat-mode refusal did not fall back to Work", jsonText(field(body, "option")))
+	if len(chat.bodies) != before+1 || number(field(body, "option", "agent_mode")) != 1 || field(body, "option", "conversation_init_ext", "mode_id") != "3" {
+		t.Fatal("new request did not go directly to Work", jsonText(field(body, "option")))
 	}
 	// A Work-mode conversation continues in Work mode.
 	chat.reject = nil
-	before := len(chat.bodies)
+	before = len(chat.bodies)
 	ask(chatRequest("x", work, "y"))
 	body = chat.last()
 	if len(chat.bodies) != before+1 || number(field(body, "option", "agent_mode")) != 1 || field(body, "client_meta", "conversation_id") == "" || sentText(body) != "y" {
 		t.Fatal("Work-mode follow-up did not continue in Work mode", len(chat.bodies)-before, jsonText(body["client_meta"]))
 	}
-	// An oversized prompt is not resent to Work.
+	// An oversized Work prompt is not retried in another mode.
 	chat.reject = func(object) int { return 710020202 }
 	before = len(chat.bodies)
 	status, response := postGateway(t, server, chatRequest("z"), "")
 	if status != 400 || field(response, "error", "code") != "context_length_exceeded" || len(chat.bodies) != before+1 {
 		t.Fatal("prompt-too-long was retried or misreported", status, response, len(chat.bodies)-before)
+	}
+	for _, body := range chat.bodies {
+		if number(field(body, "option", "agent_mode")) != 1 {
+			t.Fatal("a request or retry used ordinary chat mode", jsonText(body["option"]))
+		}
+	}
+}
+
+func TestPlainRequestsMigrateLegacyChatHistoryToWork(t *testing.T) {
+	g, server := testGateway(t)
+	chat := &fakeChat{}
+	g.c.http.Transport = chat
+	status, response := postGateway(t, server, chatRequest("earlier question"), "")
+	if status != 200 {
+		t.Fatal(status, response)
+	}
+	first := textValue(returnedMessage(t, response).Content)
+	// Simulate a conversation remembered by the pre-0.3.30 chat path.
+	g.mu.Lock()
+	for _, thread := range g.threads {
+		thread.mode, thread.context = "chat", 123456
+	}
+	g.mu.Unlock()
+	status, response = postGateway(t, server, chatRequest("earlier question", first, "follow-up"), "")
+	if status != 200 {
+		t.Fatal(status, response)
+	}
+	body := chat.last()
+	text := sentText(body)
+	if field(body, "client_meta", "conversation_id") != "" || number(field(body, "option", "agent_mode")) != 1 || field(body, "option", "conversation_init_ext", "mode_id") != "3" {
+		t.Fatal("legacy chat was continued instead of starting Work", jsonText(body))
+	}
+	for _, want := range []string{"earlier question", first, "follow-up", "完整对话记录"} {
+		if !strings.Contains(text, want) {
+			t.Fatal("migration lost earlier history", want, text)
+		}
+	}
+	if number(field(response, "usage", "prompt_tokens")) >= 123456 {
+		t.Fatal("new Work conversation retained the old chat's context size", response)
+	}
+}
+
+func TestExplicitlyDisabledClientToolsStillUseWork(t *testing.T) {
+	g, server := testGateway(t)
+	chat := &fakeChat{}
+	g.c.http.Transport = chat
+	req := toolRequest()
+	req.ToolChoice = "none"
+	status, response := postGateway(t, server, req, "")
+	if status != 200 || len(chat.bodies) != 1 || number(field(chat.last(), "option", "agent_mode")) != 1 {
+		t.Fatal("tool_choice=none did not answer directly in Work", status, response)
 	}
 }
 
@@ -399,9 +446,9 @@ func TestRefusalClassesAndWithheldReplies(t *testing.T) {
 		{710022004, 429, "upstream_busy", 1},
 		{710012007, 429, "upstream_busy", 1},
 		{710012001, 401, "login_required", 1},
-		{712010202, 400, "upstream_invalid_request", 2},
-		{710012008, 403, "upstream_forbidden", 2},
-		{710099999, 422, "upstream_rejected", 2},
+		{712010202, 400, "upstream_invalid_request", 1},
+		{710012008, 403, "upstream_forbidden", 1},
+		{710099999, 422, "upstream_rejected", 1},
 	} {
 		code := c.code
 		chat.reject = func(object) int { return code }

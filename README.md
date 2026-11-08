@@ -23,7 +23,7 @@ cd doubao-cpa-plugin
 The build runs the race tests first and produces `doubao-work.so` and a static `doubao-helper`. Put both into CPA's plugin directory. The `.so` name must carry its version, because CPA loads the highest `<id>-v<version>.so` of each plugin:
 
 ```text
-plugins/linux/amd64/doubao-work-v0.3.29.so
+plugins/linux/amd64/doubao-work-v0.3.30.so
 plugins/doubao-work/bin/doubao-helper
 ```
 
@@ -62,7 +62,7 @@ Model IDs are slugs of the Work display names, such as `doubao-auto`, `doubao-2.
 ## What works
 
 - `/v1/chat/completions` and `/v1/responses`, streaming or not, with the full visible history on every request. Claude `/v1/messages` and Gemini requests work through CPA.
-- Requests without tools use Doubao's ordinary chat mode and fall back to Work when chat mode refuses them. Requests with tools run in Work on the local-computer runtime.
+- All requests run in Work. Requests without client tools answer directly in Work; requests with tools use the local-computer runtime. Earlier chat-mode conversations restart in Work with the complete visible history.
 - A multi-turn conversation stays in one Doubao conversation. When a request's history is exactly an earlier answered history plus that answer plus new messages, the plugin continues that conversation and sends only the new messages. Otherwise it opens a new conversation with the full transcript: after an edited or compacted history, a different model or tool list, a repeated history (regenerate or concurrent requests), 12 idle hours, more than 128 open conversations (the least recently used goes first) or a CPA restart, and when Doubao refuses a continuation before accepting it.
 - Up to 128 client functions, including Codex Responses Lite `additional_tools`, namespaced tools and custom tools. With `parallel_tool_calls=true` the model can request 1–8 independent calls in one response.
 - Several tool-using requests at the same time, up to 4 active tasks.

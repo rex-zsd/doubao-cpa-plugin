@@ -25,7 +25,7 @@ cd doubao-cpa-plugin
 把这两个文件放进 CPA 的插件目录。`.so` 的文件名要带版本号：CPA 按 `<id>-v<版本>.so` 识别插件，同一插件有多个版本时加载最高的那个。
 
 ```text
-plugins/linux/amd64/doubao-work-v0.3.29.so
+plugins/linux/amd64/doubao-work-v0.3.30.so
 plugins/doubao-work/bin/doubao-helper
 ```
 
@@ -95,7 +95,7 @@ Work 每次只接收一条消息，最多 262,144 个字符（UTF-16 码元）�
 
 ## 接口与参数
 
-支持 `/v1/chat/completions` 和 `/v1/responses`，非流式和流式都可以。Claude `/v1/messages` 和 Gemini 请求由 CPA 转换后进入插件。每次请求都必须携带完整的可见历史。不带函数的请求走豆包的普通对话模式，被拒绝时自动改用 Work；带函数的请求走 Work 的本地电脑模式。`instructions` 和 system/developer 消息会保留为带角色的对话记录，但不承诺原生的 system 优先级。
+支持 `/v1/chat/completions` 和 `/v1/responses`，非流式和流式都可以。Claude `/v1/messages` 和 Gemini 请求由 CPA 转换后进入插件。每次请求都必须携带完整的可见历史。0.3.30 起所有请求都走 Work：不带函数或明确禁止函数调用时直接在 Work 回答，启用函数时走 Work 的本地电脑模式，不再探测或回退到普通聊天。旧版 chat 会话的后续追问会带完整历史新建 Work 会话。`instructions` 和 system/developer 消息会保留为带角色的对话记录，但不承诺原生的 system 优先级。
 
 多轮对话会留在同一个豆包会话里：如果请求的历史恰好是插件回答过的某段历史，加上那次的回答，再加上新消息，插件就在原会话里续聊，只发送新增的消息。其余情况都开新会话并发送完整对话记录，包括：历史被改过、客户端压缩了上下文、换了模型或函数列表、同一段历史被再次请求（重新生成或并发请求）、会话闲置超过 12 小时、可续聊的会话超过 128 个（先丢最久未用的）、CPA 重启过。豆包在接收前拒绝续聊时，插件自动开新会话重发完整记录。
 
