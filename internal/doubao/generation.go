@@ -233,6 +233,10 @@ type Receipt struct {
 	Context   int    `json:"context_tokens,omitempty"`
 	Completed bool   `json:"completed"`
 	Request   object `json:"request"`
+	Readback  string `json:"readback,omitempty"`
+	// A live stream can prove the exact inline reply to read. It is deliberately
+	// not restored from disk; recovery retains the full conversation lookup.
+	inlineReadback *inlineReplyProof
 }
 
 func buildBody(message, conversation, mode string, model Model) object {
@@ -367,6 +371,7 @@ func (c *Client) runObserved(ctx context.Context, body object, receiptPath strin
 	}
 	callback := func(name string, data object, _ string) (bool, error) {
 		r.Events[name]++
+		r.observeInlineReply(name, data)
 		if observe != nil {
 			if err := observe(name, data); err != nil {
 				return false, err
@@ -434,6 +439,7 @@ func (c *Client) runObserved(ctx context.Context, body object, receiptPath strin
 	// readback. A dropped stream never leads to another generation.
 	following := err == nil
 	if !following {
+		r.inlineReadback = nil
 		c.streamResumed("readback")
 	}
 	for i := 0; following && i < len(r.Tasks); i++ {
@@ -596,6 +602,9 @@ func contextTokens(message any) int {
 }
 
 func (c *Client) readReply(ctx context.Context, r *Receipt) (string, bool, error) {
+	if answer, finished, handled, err := c.readInlineReply(ctx, r); handled {
+		return answer, finished, err
+	}
 	v, err := c.json(ctx, "POST", "/im/conversation/batch_get", nil, object{"cmd": 1111, "uplink_body": object{"batch_get_conv_info_uplink_body": object{"conversation_id": []string{r.ConversationID}, "option": object{"recent_message_count_per_conv": 100}, "ext": object{}}}, "sequence_id": token(), "channel": 2, "version": "1"})
 	if err != nil {
 		return "", false, err
@@ -641,28 +650,36 @@ func (c *Client) readReply(ctx context.Context, r *Receipt) (string, bool, error
 		if !root || latest == nil {
 			return "", false, nil
 		}
-		final := textValue(field(latest, "final_status", "message"))
-		if number(field(latest, "content_status")) == 500 || truthy(field(latest, "ext", "error_details")) || final == "Error" || final == "Timeout" {
-			return "", false, errors.New("server reports failed generation")
+		answer, finished, err := finishedReply(latest, r)
+		if finished {
+			r.Readback = "conversation"
 		}
-		if textValue(field(latest, "ext", "is_interrupted")) == "true" || number(field(latest, "content_status")) == 120 {
-			return "", false, errors.New("server reports cancelled generation")
+		return answer, finished, err
+	}
+	return "", false, nil
+}
+
+// Both lookup routes use the same final-answer, error and context checks.
+func finishedReply(latest any, r *Receipt) (string, bool, error) {
+	final := textValue(field(latest, "final_status", "message"))
+	if number(field(latest, "content_status")) == 500 || truthy(field(latest, "ext", "error_details")) || final == "Error" || final == "Timeout" {
+		return "", false, errors.New("server reports failed generation")
+	}
+	if textValue(field(latest, "ext", "is_interrupted")) == "true" || number(field(latest, "content_status")) == 120 {
+		return "", false, errors.New("server reports cancelled generation")
+	}
+	for _, b := range array(field(latest, "content_block")) {
+		if field(b, "content", "complex_task_block") != nil || field(b, "content", "task_card_block") != nil {
+			return "", false, nil
 		}
-		blocks := array(field(latest, "content_block"))
-		for _, b := range blocks {
-			if field(b, "content", "complex_task_block") != nil || field(b, "content", "task_card_block") != nil {
-				return "", false, nil
-			}
-			if number(field(b, "content", "interaction_ask_block", "status")) == 1 {
-				return "", false, errors.New("waiting_input")
-			}
+		if number(field(b, "content", "interaction_ask_block", "status")) == 1 {
+			return "", false, errors.New("waiting_input")
 		}
-		answer := visibleText(latest)
-		if answer != "" && textValue(field(latest, "ext", "is_finish")) == "1" {
-			r.Context = contextTokens(latest)
-			return answer, true, nil
-		}
-		return "", false, nil
+	}
+	answer := visibleText(latest)
+	if answer != "" && textValue(field(latest, "ext", "is_finish")) == "1" {
+		r.Context = contextTokens(latest)
+		return answer, true, nil
 	}
 	return "", false, nil
 }
