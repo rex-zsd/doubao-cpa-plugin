@@ -597,11 +597,16 @@ func (g *gateway) releaseWorkspaceLocked(path string) {
 }
 
 // forgetLocked drops a thread; its conversation is no longer continued.
-func (g *gateway) forgetLocked(key string) {
+func (g *gateway) forgetLocked(key string) error {
 	if th := g.threads[key]; th != nil {
 		delete(g.threads, key)
+		if err := g.saveThreadsLocked(); err != nil {
+			g.threads[key] = th
+			return err
+		}
 		g.releaseWorkspaceLocked(th.workspace)
 	}
+	return nil
 }
 
 // threadKeys hashes each prefix of messages, chained so that equal keys mean
@@ -676,11 +681,11 @@ func (g *gateway) claimThreadLocked(req apiRequest) (string, *gatewayThread, int
 		if th == nil || th.mode == "tools" && th.nativeTools != g.nativeTools {
 			continue
 		}
-		delete(g.threads, key)
 		if time.Since(th.used) > threadTTL {
-			g.releaseWorkspaceLocked(th.workspace)
+			g.forgetLocked(key)
 			continue
 		}
+		delete(g.threads, key)
 		return key, th, i + 1
 	}
 	g.logThreadMissLocked(req, header, keys)
@@ -730,14 +735,18 @@ func (g *gateway) logThreadMissLocked(req apiRequest, header string, keys []stri
 // the history it completes. Native runners join the tool stream and handler
 // before finish, so its sandbox can be reused while the old connector is
 // being removed. The next task registers and permits only its own connector.
-func (g *gateway) rememberLocked(t *gatewayTurn, text string) {
-	if t.conversation == "" || t.mode == "" {
-		return
+func (g *gateway) rememberLocked(t *gatewayTurn, text string) error {
+	if t.conversation == "" || t.mode != "work" && t.mode != "tools" {
+		return nil
 	}
 	messages := append(append([]apiMessage{}, t.request.Messages...), apiMessage{Role: "assistant", Content: text})
 	header, keys := threadHeader(t.request), threadKeys(messages)
 	key := threadKey(header, keys[len(keys)-1])
-	g.forgetLocked(key)
+	before := g.threads
+	g.threads = make(map[string]*gatewayThread, len(before)+1)
+	for key, th := range before {
+		g.threads[key] = th
+	}
 	g.threads[key] = &gatewayThread{conversation: t.conversation, mode: t.mode, workspace: t.workspace, sandbox: t.sandbox, context: t.context, used: time.Now(), header: header, keys: keys, nativeTools: t.nativeTools}
 	for len(g.threads) > threadLimit {
 		oldest := ""
@@ -746,8 +755,18 @@ func (g *gateway) rememberLocked(t *gatewayTurn, text string) {
 				oldest = k
 			}
 		}
-		g.forgetLocked(oldest)
+		delete(g.threads, oldest)
 	}
+	if err := g.saveThreadsLocked(); err != nil {
+		g.threads = before
+		return err
+	}
+	for key, th := range before {
+		if g.threads[key] != th {
+			g.releaseWorkspaceLocked(th.workspace)
+		}
+	}
+	return nil
 }
 
 func (g *gateway) submit(req apiRequest, key string) (*apiExchange, *apiError) {
@@ -1005,9 +1024,15 @@ func (g *gateway) startLocked(req apiRequest, key string, transcript bool) (*api
 		}
 	}
 	threadKey, thread, continued := g.claimThreadLocked(req)
+	claimed := false
 	restoreThread := func() {
 		if thread != nil {
 			g.threads[threadKey] = thread
+			if claimed {
+				if err := g.saveThreadsLocked(); err != nil {
+					delete(g.threads, threadKey)
+				}
+			}
 		}
 	}
 	prompt := outgoingPrompt(req, continued)
@@ -1022,7 +1047,15 @@ func (g *gateway) startLocked(req apiRequest, key string, transcript bool) (*api
 		return nil, failure
 	}
 	if thread != nil {
+		// Durably consume the head before checkpointing or dispatching any
+		// task that could advance its native conversation. A crash here can
+		// lose an optimization, but cannot resurrect an older branch.
 		delete(g.threads, threadKey)
+		if err := g.saveThreadsLocked(); err != nil {
+			restoreThread()
+			return nil, apiFail(500, "state_persistence_failed", "Could not persist conversation claim; generation was not submitted")
+		}
+		claimed = true
 	}
 	deadline := time.Now().Add(g.taskTimeout)
 	ctx, cancel := context.WithCancel(g.ctx)
@@ -1200,7 +1233,11 @@ func (g *gateway) finish(t *gatewayTurn, text string, failure *apiError) {
 		t.err = failure
 	}
 	if failure == nil {
-		g.rememberLocked(t, text)
+		if err := g.rememberLocked(t, text); err != nil {
+			// The completed answer is already durable. Losing continuation
+			// reuse must not turn it into a failure that invites regeneration.
+			fmt.Fprintln(os.Stderr, "GATEWAY_THREAD persistence_failed operation=remember")
+		}
 	}
 	g.recordOutcomeLocked(t, failure)
 	g.mu.Unlock()
@@ -1410,6 +1447,11 @@ func serveGateway(c *Client, dir, address string, timeout time.Duration, nativeT
 	if timeout < 30*time.Second || timeout > 30*time.Minute {
 		return errors.New("task-timeout must be between 30s and 30m")
 	}
+	lock, err := lockFile(dir, "provider.lock", true)
+	if err != nil {
+		return errors.New("state_dir is already owned by another provider instance")
+	}
+	defer unlockFile(lock)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	startup, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -1425,6 +1467,10 @@ func serveGateway(c *Client, dir, address string, timeout time.Duration, nativeT
 	g.nativeTools = nativeTools
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
+		return err
+	}
+	defer listener.Close()
+	if err = g.recoverTasks(); err != nil {
 		return err
 	}
 	server := &http.Server{Handler: g, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 32 << 10}

@@ -201,8 +201,10 @@ func (g *gateway) recoverTasks() error {
 			cleanup = append(cleanup, t)
 		}
 	}
-	// Threads live in memory, so after a restart only recovered tasks still
-	// use a task folder.
+	if err := g.recoverThreads(); err != nil {
+		return err
+	}
+	// Durable unclaimed heads also pin their original tool workspaces.
 	folders, _ := filepath.Glob(filepath.Join(g.dir, "gateway-workspace-*"))
 	for _, folder := range folders {
 		g.releaseWorkspaceLocked(folder)
