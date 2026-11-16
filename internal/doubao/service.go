@@ -192,7 +192,7 @@ func (s *Service) Submit(ctx context.Context, payload []byte, key string) (*Resp
 		// next catalog reload that may bring it back.
 		return nil, apiFail(400, "invalid_model", "Select a model listed by /v1/models")
 	}
-	x, failure := s.g.submit(req, key)
+	x, failure := s.g.submitLong(ctx, req, key)
 	if failure != nil {
 		return nil, failure
 	}

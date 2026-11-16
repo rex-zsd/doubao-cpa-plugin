@@ -66,8 +66,8 @@ func renderAPIRoutedPrompt(req apiRequest, connector string, continued, nativePr
 		nativeProbe = nativeDocs != ""
 	}
 	prompt := ""
-	if len(req.Messages) == 1 && req.Messages[0].Role == "user" {
-		prompt = textValue(req.Messages[0].Content)
+	if last := len(req.Messages) - 1; req.segment && req.Messages[last].Role == "user" || len(req.Messages) == 1 && req.Messages[0].Role == "user" {
+		prompt = textValue(req.Messages[last].Content)
 	} else if continued {
 		prompt = "下面 JSON 是调用方在你上一条回答之后新增的对话记录（system 为调用方指令，tool 为函数执行结果）。请结合本会话之前的全部内容继续：回应最后一条消息；如果最后是函数结果，请基于结果继续完成任务。\n" + plainJSON(req.Messages)
 	} else {

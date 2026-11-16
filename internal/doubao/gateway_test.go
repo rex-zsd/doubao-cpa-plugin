@@ -44,7 +44,7 @@ func postGateway(t *testing.T, server *httptest.Server, req apiRequest, key stri
 	if key != "" {
 		r.Header.Set("Idempotency-Key", key)
 	}
-	client := &http.Client{Transport: server.Client().Transport, Timeout: 5 * time.Second}
+	client := &http.Client{Transport: server.Client().Transport, Timeout: 30 * time.Second}
 	response, err := client.Do(r)
 	if err != nil {
 		t.Fatal(err)

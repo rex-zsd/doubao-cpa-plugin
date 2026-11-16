@@ -61,6 +61,9 @@ type apiRequest struct {
 	// model default.
 	Effort         int    `json:"reasoning_effort,omitempty"`
 	ResponseFormat object `json:"response_format,omitempty"`
+	// segment marks a history segment of a long request (gateway_preload.go),
+	// sent as its bare text.
+	segment bool
 }
 type apiError struct {
 	Status  int    `json:"-"`
@@ -1431,7 +1434,7 @@ func (g *gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, apiFail(400, "model_not_found", "Select a model listed by /v1/models"))
 		return
 	}
-	x, failure := g.submit(req, r.Header.Get("Idempotency-Key"))
+	x, failure := g.submitLong(r.Context(), req, r.Header.Get("Idempotency-Key"))
 	if failure != nil {
 		writeAPIError(w, failure)
 		return
