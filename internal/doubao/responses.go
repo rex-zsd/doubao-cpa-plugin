@@ -104,6 +104,11 @@ func NormalizeResponses(payload []byte) ([]byte, error) {
 			messages = append(messages, object{"role": "tool", "tool_call_id": field(item, "call_id"), "content": content})
 		case "reasoning":
 			// Work exposes no reasoning, so replayed items carry nothing to keep.
+		case "web_search_call", "file_search_call", "image_generation_call", "code_interpreter_call", "mcp_call", "mcp_list_tools", "local_shell_call", "local_shell_call_output", "tool_search_call", "tool_search_output":
+			// The caller's own hosted tools ran upstream before this request
+			// (e.g. Codex web search in a thread that switched model). Work
+			// cannot replay them; it keeps a short note of what they did.
+			messages = append(messages, object{"role": "assistant", "content": hostedToolNote(kind, item)})
 		case "item_reference":
 			return nil, apiFail(400, "full_history_required", "Stored item references are unsupported; send the items themselves")
 		case "", "message":
@@ -168,3 +173,26 @@ func responsesContent(value any) (any, error) {
 	}
 	return result, nil
 }
+
+// hostedToolNote describes a hosted tool record without its bulky payloads
+// (images, file contents, screenshots), capped at hostedToolNoteChars.
+func hostedToolNote(kind string, item any) string {
+	note := object{}
+	for _, name := range []string{"status", "action", "queries", "server_label", "name", "arguments", "code", "error"} {
+		if value := field(item, name); value != nil {
+			note[name] = value
+		}
+	}
+	if kind == "local_shell_call_output" || kind == "tool_search_output" {
+		if output := textValue(field(item, "output")); output != "" {
+			note["output"] = output
+		}
+	}
+	text := plainJSON(note)
+	if runes := []rune(text); len(runes) > hostedToolNoteChars {
+		text = string(runes[:hostedToolNoteChars]) + "…（已截断）"
+	}
+	return "（此前调用方使用了自带的托管工具 " + kind + "，记录如下（图片、文件等大块内容未随历史提供）：" + text
+}
+
+const hostedToolNoteChars = 4000

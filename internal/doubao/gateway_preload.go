@@ -65,9 +65,6 @@ func (g *gateway) submitLong(ctx context.Context, req apiRequest, key string) (*
 func (g *gateway) peekThreadLocked(req apiRequest) (int, int) {
 	header, keys := threadHeader(req), threadKeys(req.Messages)
 	for i := len(req.Messages) - 2; i >= 0; i-- {
-		if m := req.Messages[i]; m.Role != "assistant" || len(m.ToolCalls) > 0 {
-			continue
-		}
 		th := g.threads[threadKey(header, keys[i])]
 		if th == nil || th.mode == "tools" && th.nativeTools != g.nativeTools || time.Since(th.used) > threadTTL {
 			continue
@@ -77,16 +74,18 @@ func (g *gateway) peekThreadLocked(req apiRequest) (int, int) {
 	return 0, 0
 }
 
-// preloadPlan picks the longest tail that fits one message and starts after
-// a plain answer (where a conversation can continue), and cuts the history
-// before it into segments.
+// preloadPlan picks the longest tail that fits one message and cuts the
+// history before it into segments. The tail starts at a message boundary
+// that does not separate tool results: an agent turn of many tool rounds
+// (e.g. after a task rotation) has no plain answer to start after, and its
+// own earlier rounds then travel as history.
 func (g *gateway) preloadPlan(req apiRequest) (preloadPlan, string) {
 	g.mu.Lock()
 	base, known := g.peekThreadLocked(req)
 	g.mu.Unlock()
 	plan := preloadPlan{base: base, split: -1, context: known}
 	for c := len(req.Messages) - 1; c > base; c-- {
-		if m := req.Messages[c-1]; m.Role != "assistant" || len(m.ToolCalls) > 0 {
+		if req.Messages[c].Role == "tool" {
 			continue
 		}
 		if utf16Len(outgoingPrompt(req, c)) > maxPromptChars {

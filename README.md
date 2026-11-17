@@ -23,7 +23,7 @@ cd doubao-cpa-plugin
 The build runs the race tests first and produces `doubao-work.so` and a static `doubao-helper`. Put both into CPA's plugin directory. The `.so` name must carry its version, because CPA loads the highest `<id>-v<version>.so` of each plugin:
 
 ```text
-plugins/linux/amd64/doubao-work-v0.3.33.so
+plugins/linux/amd64/doubao-work-v0.3.34.so
 plugins/doubao-work/bin/doubao-helper
 ```
 
@@ -81,6 +81,8 @@ Model IDs are slugs of the Work display names, such as `doubao-auto`, `doubao-2.
 For Claude Code, point `ANTHROPIC_BASE_URL` at CPA and set `ANTHROPIC_DEFAULT_HAIKU_MODEL`, `CLAUDE_CODE_MAX_CONTEXT_TOKENS=90000` and `CLAUDE_STREAM_IDLE_TIMEOUT_MS=900000`. [README_CN.md](README_CN.md) covers these settings, the error codes and the tested limits in detail.
 
 Account sessions, request receipts and tool results stay in the private state directory. Licensing and source acknowledgments are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Version 0.3.34 also splits a long agent turn that has no plain answer to start after (for example after a task rotation) between tool rounds, so its earlier rounds travel as preloaded history; hosted tool records in Responses input (such as `web_search_call` from Codex web search) are kept as short notes instead of failing the request.
 
 Version 0.3.33 accepts histories longer than one Work message (262,144 characters): the older part is sent first, in segments, into the Work conversation that then answers the request, and attachments travel with their segment. Every segment must raise the context Work reports; if Work drops earlier history instead (measured for models with a smaller window), the request fails with the usual `context_length_exceeded` rather than losing content silently. See [the segmented history notes](docs/SEGMENTED_HISTORY_0333_CN.md).
 

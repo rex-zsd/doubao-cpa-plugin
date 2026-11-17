@@ -193,3 +193,46 @@ func TestCutHistoryKeepsRunesAndEscapes(t *testing.T) {
 		}
 	}
 }
+
+// An agent turn of many tool rounds has no plain answer to continue after
+// (it arrives in full when Work rotates the task); its earlier rounds are
+// preloaded and the tail starts at a later round.
+func TestPreloadSplitsAnAgentTurnBetweenToolRounds(t *testing.T) {
+	g, server := testGateway(t)
+	run, turns := preloadRunner(g, func(int) bool { return true })
+	g.run = run
+	req := toolRequest()
+	for i := 0; i < 5; i++ {
+		id := fmt.Sprintf("call-%d", i)
+		req.Messages = append(req.Messages,
+			apiMessage{Role: "assistant", ToolCalls: []apiToolCall{{ID: id, Type: "function", Function: apiCallFunction{Name: "client_nonce", Arguments: `{"challenge":"c"}`}}}},
+			apiMessage{Role: "tool", ToolCallID: id, Content: fmt.Sprintf("round-%d ", i) + strings.Repeat("z", 70000)})
+	}
+	if utf16Len(promptText(req)) <= maxPromptChars {
+		t.Fatal("fixture fits one message")
+	}
+	status, response := postGateway(t, server, req, "")
+	if status != 200 || textValue(returnedMessage(t, response).Content) != "final answer" {
+		t.Fatal(status, response)
+	}
+	seen := turns()
+	final := seen[len(seen)-1]
+	if len(seen) < 2 || final.segment || final.continued == 0 || final.conversation != "conv-1" {
+		t.Fatalf("%d turns, final %+v", len(seen), final.continued)
+	}
+	if !strings.Contains(final.prompt, "round-4 ") || strings.Contains(final.prompt, "round-0 ") {
+		t.Fatal("tail does not start at a later round")
+	}
+	if strings.HasPrefix(strings.TrimSpace(plainJSON(req.Messages[final.continued:])), `[{"role":"tool"`) {
+		t.Fatal("tail starts with a tool result")
+	}
+	all := ""
+	for _, turn := range seen {
+		all += turn.prompt
+	}
+	for i := 0; i < 5; i++ {
+		if !strings.Contains(all, fmt.Sprintf("round-%d ", i)) {
+			t.Fatalf("round %d never sent", i)
+		}
+	}
+}

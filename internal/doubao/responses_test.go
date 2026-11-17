@@ -172,3 +172,25 @@ func TestResponsesToolNamesAvoidCollisions(t *testing.T) {
 		t.Fatal("calls resolved to the wrong tool")
 	}
 }
+
+// Codex keeps its hosted web search in the thread; a later request routed
+// here must not fail on it.
+func TestResponsesKeepsHostedToolRecordsAsNotes(t *testing.T) {
+	payload := object{"model": "TestModel", "input": []any{
+		object{"type": "message", "role": "user", "content": []any{object{"type": "input_text", "text": "look it up"}}},
+		object{"type": "web_search_call", "id": "ws_1", "status": "completed", "action": object{"type": "search", "query": "needle query"}},
+		object{"type": "message", "role": "assistant", "content": []any{object{"type": "output_text", "text": "found"}}},
+		object{"type": "message", "role": "user", "content": []any{object{"type": "input_text", "text": "thanks"}}},
+	}}
+	data, err := NormalizeResponses([]byte(jsonText(payload)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, failure := parseAPIRequest(strings.NewReader(string(data)))
+	if failure != nil {
+		t.Fatal(failure)
+	}
+	if len(req.Messages) != 4 || req.Messages[1].Role != "assistant" || !strings.Contains(textValue(req.Messages[1].Content), "needle query") || !strings.Contains(textValue(req.Messages[1].Content), "web_search_call") {
+		t.Fatal(req.Messages)
+	}
+}

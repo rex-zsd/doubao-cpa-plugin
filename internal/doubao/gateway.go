@@ -669,16 +669,15 @@ func threadMessage(m apiMessage) string {
 	return jsonText(value)
 }
 
-// claimThreadLocked takes the conversation that answered the longest prefix
-// of req's history, ending in a plain assistant answer, if one is live. The
+// claimThreadLocked takes the conversation that holds the longest prefix of
+// req's history, if one is live. The
 // thread leaves the map: a conversation continues only once, so a concurrent
 // or regenerated request opens a new one.
 func (g *gateway) claimThreadLocked(req apiRequest) (string, *gatewayThread, int) {
 	header, keys := threadHeader(req), threadKeys(req.Messages)
+	// Threads end at plain answers, except a preloaded one, which may end
+	// between tool rounds, so every prefix is looked up.
 	for i := len(req.Messages) - 2; i >= 0; i-- {
-		if m := req.Messages[i]; m.Role != "assistant" || len(m.ToolCalls) > 0 {
-			continue
-		}
 		key := threadKey(header, keys[i])
 		th := g.threads[key]
 		if th == nil || th.mode == "tools" && th.nativeTools != g.nativeTools {
